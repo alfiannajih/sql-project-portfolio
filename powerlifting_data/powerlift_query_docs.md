@@ -1,5 +1,5 @@
 # Data Cleaning
-Before we do any querying, we will cleaning our data first, hence our query result will be more accurate. Our data cleaning tasks include removing duplicated records, removing irrelevant column, correcting misspelings, etc
+Before we do any querying, we will cleaning our data first, hence our query result will be more accurate. Our data cleaning tasks include removing duplicated records, removing irrelevant column, validating data type, correcting misspelings, etc
 
 ## Check Duplicated Data
 Frst let's check the number of rows.
@@ -141,3 +141,69 @@ Output:
 |2883764|
 
 Let's check it by subtract the original number of rows with number of duplicated rows: 2887199 - 3435 = 2883764. It's correct! Let's move to next section.
+
+## Drop Irrelevant Column
+We will drop these columns: ageclass, birthyearclass, and weightclasskg, because the information from those columns already included in another column.
+
+```sql
+ALTER TABLE powerlift_data
+DROP COLUMN ageclass,
+DROP COLUMN birthyearclass,
+DROP COLUMN weightclasskg;
+```
+
+## Validate the Data Type
+In this section we will validate the data type for each column. First let's check the current data type:
+```sql
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'powerlift_data';
+```
+Output:
+
+|column_name     |data_type        |
+|----------------|-----------------|
+|squat1kg        |numeric          |
+|best3deadliftkg |numeric          |
+|totalkg         |numeric          |
+|squat2kg        |numeric          |
+|dots            |numeric          |
+|wilks           |numeric          |
+|glossbrenner    |numeric          |
+|goodlift        |numeric          |
+|squat3kg        |numeric          |
+|age             |numeric          |
+|best3squatkg    |numeric          |
+|bench1kg        |numeric          |
+|bench2kg        |numeric          |
+|date            |date             |
+|bench3kg        |numeric          |
+|bodyweightkg    |numeric          |
+|best3benchkg    |numeric          |
+|deadlift1kg     |numeric          |
+|deadlift2kg     |numeric          |
+|deadlift3kg     |numeric          |
+|meetname        |character varying|
+|sex             |character varying|
+|event           |character varying|
+|equipment       |character varying|
+|division        |character varying|
+|squat4kg        |character varying|
+|bench4kg        |character varying|
+|deadlift4kg     |character varying|
+|place           |character varying|
+|tested          |character varying|
+|country         |character varying|
+|state           |character varying|
+|federation      |character varying|
+|parentfederation|character varying|
+|meetcountry     |character varying|
+|meetstate       |character varying|
+|meettown        |character varying|
+|name            |character varying|
+
+As we can see some columns have 'inappropiate' data type:
+1. age should be an integer.
+2. squat4kg, bench4kg, and deadlift4kg should be numeric.
+
+Let's handle age column first, if age is decimal number, we will rounding down those values.
