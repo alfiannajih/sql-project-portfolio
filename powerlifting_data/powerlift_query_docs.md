@@ -7,6 +7,12 @@ You may download a copy of the data at https://data.openpowerlifting.org. (acces
 ## Table of Contents
 1. [Data Preparation](#data_preparaion)
 2. [Data Cleaning](#data_cleaning)
+    1. [Check Duplicate Data](#duplicate_data)
+    2. [Drop Irrelecant Columns](#irrelecant_columns)
+    3. [Validate the Data Type](#validate_data_type)
+    4. [Validate the Input Data](#validate_input)
+        1. [age Column](#validate_age)
+        2. [bodyweightkg Column](#validate_bodyweight)
 3. [Case Study](#case_study)
 
 # Data Preparation <a name=data_preparation></a>
@@ -67,9 +73,9 @@ Output:
 > COPY 2887199
 
 # Data Cleaning <a name=data_cleaning></a>
-Before we do any querying, we will cleaning our data first, hence our query result will be more accurate. Our data cleaning tasks include removing duplicated records, removing irrelevant column, and validate the data type.
+Before we do any querying, we will cleaning our data first, hence our query result will be more accurate. Our data cleaning tasks include removing duplicate records, removing irrelevant column, and validate the data type.
 
-## Check Duplicated Data
+## Check Duplicate Data <a name=duplicate_data></a>
 Frst let's check the number of rows.
 ```sql
 SELECT COUNT(*)
@@ -81,7 +87,7 @@ Output:
 |---|
 |2887199|
 
-Next, we will find the total amount of duplicated rows, the idea is to `COUNT(*)` by `GROUP BY` for each column and filter it by `HAVING COUNT(*) > 1`, then substract it by 1, hence we will get the number of how many the unique rows appeared again. After that, we will sum up all these duplicated rows.
+Next, we will find the total amount of duplicate rows, the idea is to `COUNT(*)` by `GROUP BY` for each column and filter it by `HAVING COUNT(*) > 1`, then substract it by 1, hence we will get the number of how many the unique rows appeared again. After that, we will sum up all these duplicate rows.
 
 ```sql
 SELECT
@@ -130,7 +136,7 @@ GROUP BY
     MeetTown,
     MeetName
 HAVING COUNT(*) > 1
-LIMIT 1
+LIMIT 1;
 ```
 Output:
 
@@ -138,7 +144,7 @@ Output:
 | --- |
 | 3435 |
 
-There are 3435 duplicated rows! Let's drop these duplicated rows by using temporary table.
+There are 3435 duplicate rows! Let's drop these duplicate rows by using temporary table.
 
 ```sql
 -- Create temporary table
@@ -208,9 +214,9 @@ Output:
 |---|
 |2883764|
 
-Let's check it by subtract the original number of rows with number of duplicated rows: 2887199 - 3435 = 2883764. It's correct! Let's move to next section.
+Let's check it by subtract the original number of rows with number of duplicate rows: 2887199 - 3435 = 2883764. It's correct! Let's move to next section.
 
-## Drop Irrelevant Column
+## Drop Irrelevant Column <a name=irrelevant_columns></a>
 We will drop these columns: ageclass, birthyearclass, and weightclasskg, because the information from those columns already included in another column.
 
 ```sql
@@ -222,7 +228,7 @@ DROP COLUMN weightclasskg;
 Output:
 > ALTER successfully executed.
 
-## Validate the Data Type
+## Validate the Data Type <a name=validate_data_type></a>
 In this section we will validate the data type for each column. First let's check the current data type:
 ```sql
 SELECT column_name, data_type 
@@ -306,5 +312,86 @@ Output:
 > ALTER successfully executed.
 
 > ALTER successfully executed.
+
+## Validate the Input Data <a name=validate_input></a>
+Based on the columns, age and bodyweightkg is prone to invalid input data. So let's inspect each of these columns.
+
+### age Column <a name=validate_age></a>
+First, we will check the range of input i.e. minimum and maximum value.
+```sql
+SELECT
+    MIN(age),
+    MAX(age)
+FROM powerlift_data;
+```
+Output:
+|min|max|
+|---|---|
+|0|98|
+
+The minimum age doesn't make any sense, let's try detect the outliers and eliminate it by using Interquartile Range (IQR) method.
+```sql
+WITH
+age_quartile AS (
+    SELECT
+        name,
+        age,
+        NTILE(4) OVER (ORDER BY age) AS quartile
+    FROM powerlift_data
+    WHERE age IS NOT NULL
+),
+quart_1_3 AS (
+    SELECT
+        quartile,
+        MAX(age) AS age
+    FROM age_quartile
+    WHERE quartile IN (1, 3)
+    GROUP BY quartile
+),
+quart_filter AS (
+    SELECT
+        name,
+        age,
+        (SELECT age FROM quart_1_3 WHERE quartile = 1) AS quart_1,
+        (SELECT age FROM quart_1_3 WHERE quartile = 3) AS quart_3,
+        (SELECT age FROM quart_1_3 WHERE quartile = 3) - (SELECT age FROM quart_1_3 WHERE quartile = 1) AS inter_quart
+    FROM powerlift_data
+)
+
+SELECT
+    MIN(age),
+    MAX(age)
+FROM quart_filter
+WHERE
+    age > quart_1 - 1.5*inter_quart
+    AND
+    age < quart_3 + 1.5*inter_quart;
+```
+|min|max|
+|---|---|
+|0|64|
+
+The IQR method just remove upper outliers, let's try another method.
+
+Based on this [Powerliftin Sport Rules](https://media.specialolympics.org/resources/sports-essentials/sport-rules/Sports-Essentials-Powerlifting-Rules-2020-v2.pdf), the minimum age to compete is 14 years old, while there is no maximum age limit to compete. So let's count the age that below 14 years old.
+```sql
+SELECT COUNT(*)
+FROM powerlift_data
+WHERE age < 14;
+```
+Output:
+|count|
+|---|
+|27737|
+
+Comparing to the number of rows in the datasets, it is pretty low number, so let's drop these rows.
+```sql
+DELETE FROM powerlift_data
+WHERE age < 14;
+```
+Output:
+> DELETE successfully executed. 27737 rows were affected.
+
+### bodyweightkg Column<a href=validate_bodyweight></a>
 
 # Case Study <a name=case_study></a>
