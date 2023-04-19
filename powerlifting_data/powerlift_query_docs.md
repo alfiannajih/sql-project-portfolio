@@ -1,11 +1,74 @@
-# Data Cleaning
-Before we do any querying, we will cleaning our data first, hence our query result will be more accurate. Our data cleaning tasks include removing duplicated records, removing irrelevant column, validating data type, correcting misspelings, etc
+# Dcumentation
+## Table of Contents
+1. [Data Preparation](#data_preparaion)
+2. [Data Cleaning](#data_cleaning)
+3. [Case Study](#case_study)
+
+# Data Preparation <a name=data_preparation></a>
+Because the original data is in csv format, we will put it into our database. First we will create the table in our database.
+```sql
+CREATE TABLE powerlift_data(
+   Name             VARCHAR
+  ,Sex              VARCHAR
+  ,Event            VARCHAR
+  ,Equipment        VARCHAR
+  ,Age              NUMERIC
+  ,AgeClass         VARCHAR
+  ,BirthYearClass   VARCHAR
+  ,Division         VARCHAR
+  ,BodyweightKg     NUMERIC
+  ,WeightClassKg    VARCHAR
+  ,Squat1Kg         NUMERIC
+  ,Squat2Kg         NUMERIC
+  ,Squat3Kg         NUMERIC
+  ,Squat4Kg         VARCHAR
+  ,Best3SquatKg     NUMERIC
+  ,Bench1Kg         NUMERIC
+  ,Bench2Kg         NUMERIC
+  ,Bench3Kg         NUMERIC
+  ,Bench4Kg         VARCHAR
+  ,Best3BenchKg     NUMERIC
+  ,Deadlift1Kg      NUMERIC
+  ,Deadlift2Kg      NUMERIC
+  ,Deadlift3Kg      NUMERIC
+  ,Deadlift4Kg      VARCHAR
+  ,Best3DeadliftKg  NUMERIC
+  ,TotalKg          NUMERIC
+  ,Place            VARCHAR
+  ,Dots             NUMERIC
+  ,Wilks            NUMERIC
+  ,Glossbrenner     NUMERIC
+  ,Goodlift         NUMERIC
+  ,Tested           VARCHAR
+  ,Country          VARCHAR
+  ,State            VARCHAR
+  ,Federation       VARCHAR
+  ,ParentFederation VARCHAR
+  ,Date             DATE
+  ,MeetCountry      VARCHAR
+  ,MeetState        VARCHAR
+  ,MeetTown         VARCHAR
+  ,MeetName         VARCHAR
+);
+```
+Output:
+> CREATE TABLE
+
+Next we will insert our data from csv into our table on the database.
+```sql
+\COPY powerlift_data FROM 'openpowerlifting-2023-04-15-62ba32db.csv' DELIMITER ',' CSV HEADER;
+```
+Output:
+> COPY 2887199
+
+# Data Cleaning <a name=data_cleaning></a>
+Before we do any querying, we will cleaning our data first, hence our query result will be more accurate. Our data cleaning tasks include removing duplicated records, removing irrelevant column, and validate the data type.
 
 ## Check Duplicated Data
 Frst let's check the number of rows.
 ```sql
 SELECT COUNT(*)
-FROM powerlift_dataa
+FROM powerlift_data;
 ```
 Output:
 
@@ -151,6 +214,8 @@ DROP COLUMN ageclass,
 DROP COLUMN birthyearclass,
 DROP COLUMN weightclasskg;
 ```
+Output:
+> ALTER successfully executed.
 
 ## Validate the Data Type
 In this section we will validate the data type for each column. First let's check the current data type:
@@ -207,3 +272,34 @@ As we can see some columns have 'inappropiate' data type:
 2. squat4kg, bench4kg, and deadlift4kg should be numeric.
 
 Let's handle age column first, if age is decimal number, we will rounding down those values.
+```sql
+UPDATE powerlift_data
+SET age = FLOOR(age);
+
+ALTER TABLE powerlift_data
+ALTER COLUMN age TYPE INTEGER;
+```
+Output:
+> UPDATE successfully executed. 2883764 rows were affected.
+
+> ALTER successfully executed.
+
+Next let's convert these columns: squat4kg, bench4kg, and deadlift4kg into numeric. 
+```sql
+ALTER TABLE powerlift_data
+ALTER COLUMN squat4kg TYPE NUMERIC USING squat4kg::NUMERIC;
+
+ALTER TABLE powerlift_data
+ALTER COLUMN bench4kg TYPE NUMERIC USING bench4kg::NUMERIC;
+
+ALTER TABLE powerlift_data
+ALTER COLUMN deadlift4kg TYPE NUMERIC USING deadlift4kg::NUMERIC;
+```
+Output:
+> ALTER successfully executed.
+
+> ALTER successfully executed.
+
+> ALTER successfully executed.
+
+# Case Study <a name=case_study></a>
