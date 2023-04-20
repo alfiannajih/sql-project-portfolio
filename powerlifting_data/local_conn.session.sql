@@ -1,3 +1,6 @@
-SELECT bodyweightkg
+SELECT
+    name, 
+    bodyweightkg
 FROM powerlift_data
-LIMIT 50;
+ORDER BY bodyweightkg
+LIMIT 10
