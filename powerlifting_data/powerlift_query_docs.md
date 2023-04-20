@@ -447,6 +447,15 @@ WHERE
 |---|---|
 |20.14|146.2|
 
-Based on the upper bound i.e. 146.2 kg, this bodyweight still possible for a heavy powerlifter, for example based on [this article](https://fitnessvolt.com/julius-maddox-profile/), Julius Maddox's weight is around 220 kg. Therefore, for now let's ignore the upper outliers and focus on lower outliers.
+Based on the upper bound i.e. 146.2 kg, this bodyweight still possible for a heavy powerlifter, for example based on [this article](https://fitnessvolt.com/julius-maddox-profile/), Julius Maddox's weight is around 220 kg. So, for now let's ignore the upper outliers and focus on lower outliers.
+
+To check whether it's a valid input or not, we will use this assumption:
+1. Commonly invalid input occurs by accident, while accident usually occurs just once or twice, for this datasets let's assume it occurs just once.
+2. For each powerlifter name, there exists a powerlifter that participate more than one meet, so we will identify whether the lower bound bodyweightkg is a valid input or not based on another bodyweightkg in other meet for each person. We will query `name` and `MIN(bodyweightkg)AS bw_lower_bound`, then `GROUP BY name`, next we filter it by `HAVING COUNT(*) > 1`.
+3. For each name, we will set a bodyweightkg threshold by `bw_lower_bound + epsilon AS threshold`, where epsilon is element of positive real numbers, it used as a tolerance.
+4. Whenever there exists bodyweightkg that less than threshold (`bodyweightkg < threshold`), then we classify the `bw_lower_bound` rows as a valid input, and otherwise.
+
+Query Implementation:
+
 
 # Case Study <a name=case_study></a>
