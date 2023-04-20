@@ -1,14 +1,14 @@
 # Documentation
-This file contains the documenation, datasets, and query file. For the sake of datasets availability in this repository, I just attach partial datasets that consists only 50 rows out of 2887199 rows from the original datasets because of the limitation of space. However I still use the original datasets for querying in this documentation.
+This file contains the documentation, datasets, and query file. For the sake of datasets availability in this repository, I just attach partial datasets that consists only 50 rows out of 2887199 rows from the original datasets because of the limitation of space. However I still use the original datasets for querying in this documentation.
 > This page uses data from the OpenPowerlifting project, https://www.openpowerlifting.org.
 You may download a copy of the data at https://data.openpowerlifting.org. (accessed 15 April 2023).
 
 
 ## Table of Contents
-1. [Data Preparation](#data_preparaion)
+1. [Data Preparation](#data_preparation)
 2. [Data Cleaning](#data_cleaning)
     1. [Check Duplicate Data](#duplicate_data)
-    2. [Drop Irrelecant Columns](#irrelecant_columns)
+    2. [Drop Irrelevant Columns](#irrelecant_columns)
     3. [Validate the Data Type](#validate_data_type)
     4. [Validate the Input Data](#validate_input)
         1. [age Column](#validate_age)
@@ -87,7 +87,7 @@ Output:
 |---|
 |2887199|
 
-Next, we will find the total amount of duplicate rows, the idea is to `COUNT(*)` by `GROUP BY` for each column and filter it by `HAVING COUNT(*) > 1`, then substract it by 1, hence we will get the number of how many the unique rows appeared again. After that, we will sum up all these duplicate rows.
+Next, we will find the total amount of duplicate rows, the idea is to `COUNT(*)` by `GROUP BY` for each column and filter it by `HAVING COUNT(*) > 1`, then subtract it by 1, hence we will get the number of how many the unique rows appeared again. After that, we will sum up all these duplicate rows.
 
 ```sql
 SELECT
@@ -207,7 +207,7 @@ RENAME TO powerlift_data;
 Let's check the number of rows again.
 ```sql
 SELECT COUNT(*)
-FROM powerlift_dataa
+FROM powerlift_data
 ```
 Output:
 | count |
@@ -278,7 +278,7 @@ Output:
 |meettown        |character varying|
 |name            |character varying|
 
-As we can see some columns have 'inappropiate' data type:
+As we can see some columns have 'inappropriate' data type:
 1. age should be an integer.
 2. squat4kg, bench4kg, and deadlift4kg should be numeric.
 
@@ -373,7 +373,7 @@ WHERE
 
 The IQR method just remove upper outliers, let's try another method.
 
-Based on this [Powerliftin Sport Rules](https://media.specialolympics.org/resources/sports-essentials/sport-rules/Sports-Essentials-Powerlifting-Rules-2020-v2.pdf), the minimum age to compete is 14 years old, while there is no maximum age limit to compete. So let's count the age that below 14 years old.
+Based on this [Powerlifting Sport Rules](https://media.specialolympics.org/resources/sports-essentials/sport-rules/Sports-Essentials-Powerlifting-Rules-2020-v2.pdf), the minimum age to compete is 14 years old, while there is no maximum age limit to compete. So let's count the age that below 14 years old.
 ```sql
 SELECT COUNT(*)
 FROM powerlift_data
@@ -393,5 +393,60 @@ Output:
 > DELETE successfully executed. 27737 rows were affected.
 
 ### bodyweightkg Column<a href=validate_bodyweight></a>
+Let's check range of the input data.
+```sql
+SELECT
+    MIN(bodyweightkg),
+    MAX(bodyweightkg)
+FROM powerlift_data;
+```
+Output:
+|min|max|
+|---|---|
+|10|300|
+
+Both value seems doesn't make sense. It's little bit tricky to recognize whether it's valid input or not. Let's check it further.
+```sql
+WITH
+bw_quartile AS (
+    SELECT
+        name,
+        bodyweightkg,
+        NTILE(4) OVER (ORDER BY bodyweightkg) AS quartile
+    FROM powerlift_data
+    WHERE bodyweightkg IS NOT NULL
+),
+quart_1_3 AS (
+    SELECT
+        quartile,
+        MAX(bodyweightkg) AS bodyweightkg
+    FROM bw_quartile
+    WHERE quartile IN (1, 3)
+    GROUP BY quartile
+),
+quart_filter AS (
+    SELECT
+        name,
+        bodyweightkg,
+        (SELECT bodyweightkg FROM quart_1_3 WHERE quartile = 1) AS quart_1,
+        (SELECT bodyweightkg FROM quart_1_3 WHERE quartile = 3) AS quart_3,
+        (SELECT bodyweightkg FROM quart_1_3 WHERE quartile = 3) - (SELECT bodyweightkg FROM quart_1_3 WHERE quartile = 1) AS inter_quart
+    FROM powerlift_data
+)
+
+SELECT
+    MIN(bodyweightkg),
+    MAX(bodyweightkg)
+FROM quart_filter
+WHERE
+    bodyweightkg > quart_1 - 1.5*inter_quart
+    AND
+    bodyweightkg < quart_3 + 1.5*inter_quart;
+```
+|min|max|
+|---|---|
+|20.14|146.2|
+
+Based on the upper bound i.e. 146.2 kg, this bodyweight still possible for a heavy powerlifter, for example based on [this article](https://fitnessvolt.com/julius-maddox-profile/), Julius Maddox's weight is around 220 kg. Therefore, for now let's ignore the upper outliers and focus on lower outliers.
 
 # Case Study <a name=case_study></a>
