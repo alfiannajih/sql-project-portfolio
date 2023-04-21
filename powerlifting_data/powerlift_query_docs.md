@@ -455,7 +455,129 @@ To check whether it's a valid input or not, we will use this assumption:
 3. For each name, we will set a bodyweightkg threshold by `bw_lower_bound + epsilon AS threshold`, where epsilon is element of positive real numbers, it used as a tolerance.
 4. Whenever there exists bodyweightkg that less than threshold (`bodyweightkg < threshold`), then we classify the `bw_lower_bound` rows as a valid input, and otherwise.
 
-Query Implementation:
+First, let's create a new table with a temporary id (`temp_id`).
+```sql
+CREATE TABLE with_temp_id (LIKE powerlift_data);
 
+ALTER TABLE with_temp_id
+ADD COLUMN temp_id INTEGER;
 
+INSERT INTO with_temp_id (
+    Name,
+    Sex,
+    Event,
+    Equipment,
+    Age,
+    Division,
+    BodyweightKg,
+    Squat1Kg,
+    Squat2Kg,
+    Squat3Kg,
+    Squat4Kg,
+    Best3SquatKg,
+    Bench1Kg,
+    Bench2Kg,
+    Bench3Kg,
+    Bench4Kg,
+    Best3BenchKg,
+    Deadlift1Kg,
+    Deadlift2Kg,
+    Deadlift3Kg,
+    Deadlift4Kg,
+    Best3DeadliftKg,
+    TotalKg,
+    Place,
+    Dots,
+    Wilks,
+    Glossbrenner,
+    Goodlift,
+    Tested,
+    Country,
+    State,
+    Federation,
+    ParentFederation,
+    Date,
+    MeetCountry,
+    MeetState,
+    MeetTown,
+    MeetName,
+    temp_id
+)
+SELECT
+    *,
+    ROW_NUMBER() OVER(ORDER BY bodyweightkg) AS temp_id
+FROM powerlift_data
+```
+Output:
+> CREATE TABLE
+
+Next, we will implement the assumption on the new table (`with_temp_id`):
+```sql
+WITH
+-- Table with lower bound on each participant name
+lower_bound AS (
+    SELECT
+        name,
+        MIN(bodyweightkg) AS bw_lower_bound
+    FROM with_temp_id
+    WHERE bodyweightkg IS NOT NULL
+    GROUP BY name
+    HAVING COUNT(*) > 1
+),
+-- Set threshold with tolerance of 50 from lower bound
+threshold AS (
+    SELECT
+        with_temp_id.temp_id,
+        with_temp_id.name,
+        bodyweightkg,
+        bw_lower_bound + 50 AS threshold
+    FROM with_temp_id
+    RIGHT JOIN lower_bound ON lower_bound.name = with_temp_id.name
+    ORDER BY bw_lower_bound, bodyweightkg
+),
+-- Comparing each bodyweightkg and the threshold respectively with its participant name
+compare_threshold AS (
+    SELECT
+        *,
+        (bodyweightkg < threshold)::INTEGER AS less_than_threshold
+    FROM threshold
+),
+-- Find whether there exists bodyweightkg that lies inside the threshold, we set it only for participant with bodyweightkg that less than 100 kg (since it prone to become invalid input)
+filter_threshold AS (
+    SELECT
+        name,
+        SUM(less_than_threshold) AS indicator
+    FROM compare_threshold
+    WHERE threshold - 50 < 50
+    GROUP BY name
+    HAVING SUM(less_than_threshold) < 2
+),
+-- Return the temp_id that is classified as invalid input
+invalid_id AS (
+    SELECT
+        MIN(temp_id) AS temp_id
+    FROM threshold
+    RIGHT JOIN filter_threshold ON threshold.name = filter_threshold.name
+    GROUP BY threshold.name
+)
+
+-- Delete temp_id based on invalid_id
+DELETE FROM with_temp_id
+WHERE temp_id IN (SELECT temp_id FROM invalid_id)
+```
+Output:
+> DELETE successfully executed. 74 rows were affected.
+
+Lastly, we will rename `with_temp_id` to the original table and rename the original one to the backup, just in cae something wrong happened.
+```sql
+ALTER TABLE powerlift_data
+RENAME TO powerlift_backup;
+
+ALTER TABLE with_temp_id
+RENAME TO powerlift_data;
+```
+Output:
+> ALTER successfully executed.
+
+Let's move on to the case study.
 # Case Study <a name=case_study></a>
