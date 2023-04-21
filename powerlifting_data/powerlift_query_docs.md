@@ -450,7 +450,7 @@ WHERE
 Based on the upper bound i.e. 146.2 kg, this bodyweight still possible for a heavy powerlifter, for example based on [this article](https://fitnessvolt.com/julius-maddox-profile/), Julius Maddox's weight is around 220 kg. So, for now let's ignore the upper outliers and focus on lower outliers.
 
 To check whether it's a valid input or not, we will use this assumption:
-1. Commonly invalid input occurs by accident, while accident usually occurs just once or twice, for this datasets let's assume it occurs just once.
+1. Commonly invalid input occurs by accident, while accident usually occurs just once or twice, for this datasets let's assume it occurs just once. We also assume each participants name is unique, since there is no column/id that can be used as a `PRIMARY KEY`.
 2. For each powerlifter name, there exists a powerlifter that participate more than one meet, so we will identify whether the lower bound bodyweightkg is a valid input or not based on another bodyweightkg in other meet for each person. We will query `name` and `MIN(bodyweightkg)AS bw_lower_bound`, then `GROUP BY name`, next we filter it by `HAVING COUNT(*) > 1`.
 3. For each name, we will set a bodyweightkg threshold by `bw_lower_bound + epsilon AS threshold`, where epsilon is element of positive real numbers, it used as a tolerance.
 4. Whenever there exists bodyweightkg that less than threshold (`bodyweightkg < threshold`), then we classify the `bw_lower_bound` rows as a valid input, and otherwise.
@@ -563,7 +563,7 @@ invalid_id AS (
 
 -- Delete temp_id based on invalid_id
 DELETE FROM with_temp_id
-WHERE temp_id IN (SELECT temp_id FROM invalid_id)
+WHERE temp_id IN (SELECT temp_id FROM invalid_id);
 ```
 Output:
 > DELETE successfully executed. 74 rows were affected.
@@ -578,6 +578,147 @@ RENAME TO powerlift_data;
 ```
 Output:
 > ALTER successfully executed.
+
+Remember, with this assumption we drop the rows which participants that participate more than one meet. Hence, we will set some threshold to drop participants name that only participate one meet.
+```sql
+WITH
+meet_counted AS (
+    SELECT
+        COUNT(*) AS freq,
+        name
+    FROM powerlift_data
+    GROUP BY name
+),
+invalid_id AS (
+    SELECT
+        temp_id
+    FROM powerlift_data
+    RIGHT JOIN meet_counted ON powerlift_data.name = meet_counted.name
+    WHERE
+        freq = 1
+        AND
+        bodyweightkg < 25
+)
+
+DELETE FROM powerlift_data
+WHERE temp_id IN (SELECT temp_id FROM invalid_id);
+```
+Output:
+> DELETE successfully executed. 32 rows were affected.
+
+## Check Duplicate Data Once Again
+Since we drop some irrelevant column, we want to make sure if our data still doesn't contains duplicate rows.
+```sql
+SELECT
+    SUM(COUNT(*) - 1) OVER() AS total_duplicated
+FROM powerlift_data
+GROUP BY
+    Name,
+    Sex,
+    Event,
+    Equipment,
+    Age,
+    Division,
+    BodyweightKg,
+    Squat1Kg,
+    Squat2Kg,
+    Squat3Kg,
+    Squat4Kg,
+    Best3SquatKg,
+    Bench1Kg,
+    Bench2Kg,
+    Bench3Kg,
+    Bench4Kg,
+    Best3BenchKg,
+    Deadlift1Kg,
+    Deadlift2Kg,
+    Deadlift3Kg,
+    Deadlift4Kg,
+    Best3DeadliftKg,
+    TotalKg,
+    Place,
+    Dots,
+    Wilks,
+    Glossbrenner,
+    Goodlift,
+    Tested,
+    Country,
+    State,
+    Federation,
+    ParentFederation,
+    Date,
+    MeetCountry,
+    MeetState,
+    MeetTown,
+    MeetName
+HAVING COUNT(*) > 1
+LIMIT 1;
+```
+Output:
+| total_duplicated |
+| --- |
+| 29 |
+
+It contains duplicate rows, let's remove it
+```sql
+-- Drop temp_id
+ALTER TABLE powerlift_data
+DROP COLUMN temp_id;
+
+-- Create temporary table
+CREATE TABLE temp (LIKE powerlift_data);
+
+-- Insert distinct row into temporary table
+INSERT INTO temp (
+    Name,
+    Sex,
+    Event,
+    Equipment,
+    Age,
+    Division,
+    BodyweightKg,
+    Squat1Kg,
+    Squat2Kg,
+    Squat3Kg,
+    Squat4Kg,
+    Best3SquatKg,
+    Bench1Kg,
+    Bench2Kg,
+    Bench3Kg,
+    Bench4Kg,
+    Best3BenchKg,
+    Deadlift1Kg,
+    Deadlift2Kg,
+    Deadlift3Kg,
+    Deadlift4Kg,
+    Best3DeadliftKg,
+    TotalKg,
+    Place,
+    Dots,
+    Wilks,
+    Glossbrenner,
+    Goodlift,
+    Tested,
+    Country,
+    State,
+    Federation,
+    ParentFederation,
+    Date,
+    MeetCountry,
+    MeetState,
+    MeetTown,
+    MeetName
+)
+SELECT DISTINCT *
+FROM powerlift_data;
+
+-- Drop the original table
+DROP TABLE powerlift_data;
+
+-- Rename the temporary table to original name
+ALTER TABLE temp
+RENAME TO powerlift_data;
+```
 
 Let's move on to the case study.
 # Case Study <a name=case_study></a>
