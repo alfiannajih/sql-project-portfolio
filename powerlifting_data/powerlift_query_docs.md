@@ -13,6 +13,7 @@ You may download a copy of the data at https://data.openpowerlifting.org. (acces
     4. [Validate the Input Data](#validate_input)
         1. [age Column](#validate_age)
         2. [bodyweightkg Column](#validate_bodyweight)
+    5. [Check Duplicate Data Once Again](#duplicate_data_2)
 3. [Case Study](#case_study)
 
 # Data Preparation <a name=data_preparation></a>
@@ -392,7 +393,7 @@ WHERE age < 14;
 Output:
 > DELETE successfully executed. 27737 rows were affected.
 
-### bodyweightkg Column<a href=validate_bodyweight></a>
+### bodyweightkg Column <a href=validate_bodyweight></a>
 Let's check range of the input data.
 ```sql
 SELECT
@@ -606,7 +607,7 @@ WHERE temp_id IN (SELECT temp_id FROM invalid_id);
 Output:
 > DELETE successfully executed. 32 rows were affected.
 
-## Check Duplicate Data Once Again
+## Check Duplicate Data Once Again <a name=duplicate_data_2></a>
 Since we drop some irrelevant column, we want to make sure if our data still doesn't contains duplicate rows.
 ```sql
 SELECT
@@ -722,3 +723,62 @@ RENAME TO powerlift_data;
 
 Let's move on to the case study.
 # Case Study <a name=case_study></a>
+1. Find the percentage of powerlifter's gender!
+
+    Because some participants name occurs more than one, first we query the unique participant `name` and their `sex`, after that we use `COUNT(*)`.
+    ```sql
+    WITH
+    unique_participants AS (
+        SELECT
+            DISTINCT name,
+            sex
+        FROM powerlift_data
+    ),
+    unique_gender AS (
+        SELECT
+            sex,
+            COUNT(*) AS count_gender
+        FROM unique_participants
+        GROUP BY sex
+    )
+
+    SELECT
+        sex,
+        ROUND(count_gender / SUM(count_gender) OVER() * 100, 3) AS percentage
+    FROM unique_gender
+    ORDER BY percentage DESC;
+    ```
+    Output:
+    |sex|percentage|
+    |---|---|
+    |M|75.171|
+    |F|24.826|
+    |Mx|0.004|
+
+2. Find the percentage of each event respectively to the total event!
+    ```sql
+    WITH
+    unique_event AS (
+        SELECT
+            event,
+            COUNT(*) AS count_event
+        FROM powerlift_data
+        GROUP BY event
+    )
+
+    SELECT
+        event,
+        ROUND(count_event / SUM(count_event) OVER() * 100, 3) AS percentage
+    FROM unique_event
+    ORDER BY percentage DESC;
+    ```
+    Output:
+    |event|percentage|
+    |-----|----------|
+    |SBD  |69.009    |
+    |B    |22.586    |
+    |D    |5.744     |
+    |BD   |1.961     |
+    |S    |0.533     |
+    |SB   |0.102     |
+    |SD   |0.064     |
