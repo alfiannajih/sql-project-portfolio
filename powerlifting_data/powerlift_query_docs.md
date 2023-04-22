@@ -782,3 +782,64 @@ Let's move on to the case study.
     |S    |0.533     |
     |SB   |0.102     |
     |SD   |0.064     |
+
+3. How many percent successful lift in SBD (for each lift)?
+    **Squat**
+    ```sql
+    WITH 
+    squat_lift AS (
+        SELECT
+            squat1kg,
+            squat2kg,
+            squat3kg
+        FROM powerlift_data
+        WHERE
+            event = 'SBD'
+            AND
+            squat1kg IS NOT NULL
+            AND
+            squat2kg IS NOT NULL
+            AND
+            squat3kg IS NOT NULL
+    )
+
+    SELECT
+        ROUND((SELECT COUNT(squat1kg) FROM squat_lift WHERE squat1kg > 0)::NUMERIC / COUNT(squat1kg) * 100, 2) AS squat_1_percentage,
+        ROUND((SELECT COUNT(squat2kg) FROM squat_lift WHERE squat2kg > 0)::NUMERIC / COUNT(squat2kg) * 100, 2) AS squat_2_percentage,
+        ROUND((SELECT COUNT(squat3kg) FROM squat_lift WHERE squat3kg > 0)::NUMERIC / COUNT(squat3kg) * 100, 2) AS squat_3_percentage
+    FROM squat_lift
+    ```
+    Output:
+    |squat_1_percentage|squat_2_percentage|squat_3_percentage|
+    |------------------|------------------|------------------|
+    |85.14             |78.98             |61.82             |
+
+    **Bench**
+    ```sql
+    WITH 
+    bench_lift AS (
+        SELECT
+            bench1kg,
+            bench2kg,
+            bench3kg
+        FROM powerlift_data
+        WHERE
+            event = 'SBD'
+            AND
+            bench1kg IS NOT NULL
+            AND
+            bench2kg IS NOT NULL
+            AND
+            bench3kg IS NOT NULL
+    )
+
+    SELECT
+        ROUND((SELECT COUNT(bench1kg) FROM bench_lift WHERE bench1kg > 0)::NUMERIC / COUNT(bench1kg) * 100, 2) AS bench_1_percentage,
+        ROUND((SELECT COUNT(bench2kg) FROM bench_lift WHERE bench2kg > 0)::NUMERIC / COUNT(bench2kg) * 100, 2) AS bench_2_percentage,
+        ROUND((SELECT COUNT(bench3kg) FROM bench_lift WHERE bench3kg > 0)::NUMERIC / COUNT(bench3kg) * 100, 2) AS bench_3_percentage
+    FROM bench_lift;
+    ```
+    Output:
+    |bench_1_percentage|bench_2_percentage|bench_3_percentage|
+    |---------------|---------------|---------------|
+    |89.77          |77.52          |45.77          |
