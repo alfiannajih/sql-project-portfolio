@@ -922,8 +922,12 @@ Let's move on to the case study.
     |2020-2023 |M  |194.70       |
     |2020-2023 |Mx |105.55       |
 
-    ![alt text](plot_graph/avg_best_powerlift_m.png)
+    ![Best Average Squat for Male Powerlifter](plot_graph/best_squat_M.png)
 
+    ![Best Average Squat for Female Powerlifter](plot_graph/best_squat_F.png)
+
+    ![Best Average Squat for Neutral Gender Powerlifter](plot_graph/best_squat_Mx.png)
+    
     **Bench**
     ```sql
     SELECT
@@ -968,6 +972,12 @@ Let's move on to the case study.
     |2020-2023 |F  |64.81        |
     |2020-2023 |M  |131.36       |
     |2020-2023 |Mx |60.47        |
+
+    ![Best Average Bench for Male Powerlifter](plot_graph/best_bench_M.png)
+
+    ![Best Average Bench for Female Powerlifter](plot_graph/best_bench_F.png)
+
+    ![Best Average Bench for Neutral Gender Powerlifter](plot_graph/best_bench_Mx.png)
 
     **Deadlift**
     ```sql
@@ -1014,6 +1024,11 @@ Let's move on to the case study.
     |2020-2023 |M  |213.51          |
     |2020-2023 |Mx |126.29          |
 
+    ![Best Average Deadlift for Male Powerlifter](plot_graph/best_deadlift_M.png)
+
+    ![Best Average Deadlift for Female Powerlifter](plot_graph/best_deadlift_F.png)
+
+    ![Best Average Deadlift for Neutral Gender Powerlifter](plot_graph/best_deadlift_Mx.png)
 
 ## TEMPORARY ARCHIVED
 
