@@ -922,6 +922,8 @@ Let's move on to the case study.
     |2020-2023 |M  |194.70       |
     |2020-2023 |Mx |105.55       |
 
+    ![alt text](plot_graph/avg_best_powerlift_m.png)
+
     **Bench**
     ```sql
     SELECT
