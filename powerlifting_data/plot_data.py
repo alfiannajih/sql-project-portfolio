@@ -11,7 +11,7 @@ def save_plot(csv_data, title):
         plt.figure(figsize=(8, 4))
         
         plt.plot(
-            temp_df['year_range'],
+            temp_df.iloc[:, 0],
             temp_df.iloc[:, -1]
         )
 
@@ -19,8 +19,8 @@ def save_plot(csv_data, title):
         plt.ylim(temp_df.iloc[:, -1].min() * 0.9, temp_df.iloc[:, -1].max() * 1.1)
 
         plt.title(f'{title}_{sex}')
-        plt.xlabel('Year Range')
-        plt.ylabel('Weight (kg)')
+        plt.xlabel(temp_df.columns[0])
+        plt.ylabel(temp_df.columns[-1])
 
         plt.savefig(f'plot_graph/{title}_{sex}.png', bbox_inches='tight')
 
