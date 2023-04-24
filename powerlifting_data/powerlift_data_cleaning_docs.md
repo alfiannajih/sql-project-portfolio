@@ -1,8 +1,4 @@
-# Documentation
-This file contains the documentation, datasets, and query file. For the sake of datasets availability in this repository, I just attach partial datasets that consists only 50 rows out of 2887199 rows from the original datasets because of the limitation of space. However I still use the original datasets for querying in this documentation.
-> This page uses data from the OpenPowerlifting project, https://www.openpowerlifting.org.
-You may download a copy of the data at https://data.openpowerlifting.org. (accessed 15 April 2023).
-
+# Data Cleaning
 
 ## Table of Contents
 1. [Data Preparation](#data_preparation)
@@ -14,7 +10,6 @@ You may download a copy of the data at https://data.openpowerlifting.org. (acces
         1. [age Column](#validate_age)
         2. [bodyweightkg Column](#validate_bodyweight)
     5. [Check Duplicate Data Once Again](#duplicate_data_2)
-3. [Case Study](#case_study)
 
 # Data Preparation <a name=data_preparation></a>
 Because the original data is in csv format, we will put it into our database. First we will create the table in our database.
