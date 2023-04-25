@@ -25,10 +25,16 @@
         1. [Average Best Deadlift for Male](#avg_deadlift_male)
         2. [Average Best Deadlift for Female](#avg_deadlift_female)
         3. [Average Best Deadlift for Neutral Gender](#avg_deadlift_neutral)
-6. [Descriptive statistics grouped by age within 5 year range](#desc_stat)
+6. [Descriptive statistics bodyweight grouped by age within 5 year range](#desc_stat)
     1. [Descriptive Statistics for Male](#desc_stat_male)
     2. [Descriptive Statistics for Female](#desc_stat_female)
     3. [Descriptive Statistics for Neutral](#desc_stat_neutral)
+7. [Place Query](#place_query)
+    1. [The most number 1 place](#first_place)
+        1. [Top 10 male powerlifter with the most number 1 place](#first_male)
+        2. [Top 10 female powerlifter with the most number 1 place](#first_female)
+        3. [Top 10 neutral gender powerlifter with the most number 1 place](#first_neutral)
+8. [Percentage of disqualified powerlifter grouped by year within 5 year range](#disq_percent)
 
 ## Percentage of powerlifter's gender <a name=gender_count></a>
 Because some participants name occurs more than one, first we query the unique participant `name` and their `sex`, after that we use `COUNT(*)`.
@@ -65,6 +71,7 @@ Output:
 It's clearly that male gender dominated the powerlifting meet, while neutral gender is not very common in powerlifting meet.
 
 ## The number of powerlifter that join the meet within 5 year range (Separated by the gender)<a name=count_powerlifter></a>
+First, we will query it and export it into [query_csv](query_csv), then we will plot it by using [plot_data script](plot_data.py) and save it into [plot_graph](plot_graph).
 ```sql
 CREATE TABLE count_powerlifter(
     year_range VARCHAR,
@@ -353,7 +360,7 @@ Output:
 All successful lift decrease proportionally to the lift attempt.
 
 ## The average best lift for each 5 year (for each lift) <a name=avg_lift></a>
-First, we will query for each lift and export it into [query_csv](query_csv), then we will plot it by using [plot_best_average script](plot_best_average.py) and save it into [plot_graph](plot_graph).
+We will query for each lift and export it into [query_csv](query_csv), then we will plot it by using [plot_data script](plot_data.py) and save it into [plot_graph](plot_graph).
 
 ### Average Best Squat <a name=avg_squat></a>
 ```sql
@@ -647,7 +654,7 @@ Output:
 
 ![Average Best Deadlift for Neutral Gender Powerlifter](plot_graph/avg_best_deadlift_Mx.png)
 
-## Descriptive statistics grouped by age within 5 year range <a name=desc_stat></a>
+## Descriptive statistics for bodyweight grouped by age within 5 year range <a name=desc_stat></a>
 
 ```sql
 CREATE TABLE desc_stat_age (
@@ -784,3 +791,132 @@ Output:
 |49-49    |1                |111.00 |111      |111    |      |0       |
 |53-54    |2                |85.70  |85.7     |83.6   |2.97  |4.2     |
 |55-58    |2                |88.60  |88.6     |86.1   |3.54  |5.0     |
+
+## Place query <a name='place_query'></a>
+### The most number 1 place <a name='first_place'></a>
+#### Top 10 male powerlifter with the most number 1 place <a name=first_male></a>
+```sql
+SELECT
+    name,
+    COUNT(*) AS total_first
+FROM powerlift_data
+WHERE
+    place = '1'
+    AND
+    sex = 'M'
+GROUP BY name
+ORDER BY total_first DESC
+LIMIT 10;
+```
+Output:
+|name|total_first|
+|----|-----------|
+|Magomedamin Israpilov|270  |
+|Evgeniy Svoboda|237        |
+|Alan Aerts|219             |
+|Gary Teeter|195            |
+|Gordon Santee|180          |
+|Sverre Paulsen|180         |
+|Martin Drake|174           |
+|Bob Legg|170               |
+|Stefan Sochaňski|170       |
+|Vladimir Kulakov|170       |
+
+#### Top 10 female powerlifter with the most number 1 place <a name=first_female></a>
+```sql
+SELECT
+    name,
+    COUNT(*) AS total_first
+FROM powerlift_data
+WHERE
+    place = '1'
+    AND
+    sex = 'F'
+GROUP BY name
+ORDER BY total_first DESC
+LIMIT 10;
+```
+Output:
+|name|total_first|
+|----|-----------|
+|Bonnie Aerts|225       |
+|Judy Gedney|166        |
+|Heena Patel|145        |
+|Jenny Hunter|128       |
+|Hana Takáčová|118      |
+|Mary Anderson|117      |
+|Jackie Blasbery|109    |
+|Ellen Stein|108        |
+|Mary Hetzel|107        |
+|Betsy Spann|106        |
+
+#### Top 10 neutral gender powerlifter with the most number 1 place <a name=first_neutral></a>
+```sql
+SELECT
+    name,
+    COUNT(*) AS total_first
+FROM powerlift_data
+WHERE
+    place = '1'
+    AND
+    sex = 'Mx'
+GROUP BY name
+ORDER BY total_first DESC
+LIMIT 10;
+```
+Output:
+|name|total_first|
+|----|-----------|
+|Brett Richmond|6      |
+|Ardel Thomas|4        |
+|Val Schull|4          |
+|Elaine Bradley|3      |
+|Adam Henson #2|3      |
+|Ryan Frankland|3      |
+|Ashton Meaux|2        |
+|Angel Flores #1|2     |
+|Hannah Newman|2       |
+|Andrew Pond|1         |
+
+### Percentage of disqualified powerlifter grouped by year within 5 year range <a name='disq_percent'></a>
+```sql
+WITH
+total_count AS (
+    SELECT
+        CONCAT(MIN(DATE_PART('year', date))::VARCHAR, '-', MAX(DATE_PART('year', date))::VARCHAR) AS year_range,
+        COUNT(*) AS count_participant
+    FROM powerlift_data
+    GROUP BY FLOOR(DATE_PART('year', date)/5)
+),
+disq_count AS (
+    SELECT
+        CONCAT(MIN(DATE_PART('year', date))::VARCHAR, '-', MAX(DATE_PART('year', date))::VARCHAR) AS year_range,
+        COUNT(*) AS disq_participant
+    FROM powerlift_data
+    WHERE place IN ('DQ', 'DD')
+    GROUP BY FLOOR(DATE_PART('year', date)/5)
+)
+
+SELECT
+    disq_count.*,
+    ROUND(disq_count.disq_participant / total_count.count_participant::NUMERIC * 100, 2)disq_percent
+FROM disq_count
+INNER JOIN total_count ON total_count.year_range = disq_count.year_range;
+```
+Output:
+|year_range|disq_participant|disq_percent|
+|----------|----------------|------------|
+|1964-1964 |3               |7.69        |
+|1965-1969 |31              |8.81        |
+|1970-1974 |104             |8.97        |
+|1975-1979 |337             |5.65        |
+|1980-1984 |7615            |6.15        |
+|1985-1989 |2678            |5.35        |
+|1990-1994 |3161            |5.80        |
+|1995-1999 |4293            |5.31        |
+|2000-2004 |8238            |6.16        |
+|2005-2009 |15598           |8.42        |
+|2010-2014 |42342           |7.98        |
+|2015-2019 |66047           |5.78        |
+|2020-2023 |28982           |5.30        |
+
