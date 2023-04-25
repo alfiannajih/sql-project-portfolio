@@ -25,6 +25,10 @@
         1. [Average Best Deadlift for Male](#avg_deadlift_male)
         2. [Average Best Deadlift for Female](#avg_deadlift_female)
         3. [Average Best Deadlift for Neutral Gender](#avg_deadlift_neutral)
+6. [Descriptive statistics grouped by age within 5 year range](#desc_stat)
+    1. [Descriptive Statistics for Male](#desc_stat_male)
+    2. [Descriptive Statistics for Female](#desc_stat_female)
+    3. [Descriptive Statistics for Neutral](#desc_stat_neutral)
 
 ## Percentage of powerlifter's gender <a name=gender_count></a>
 Because some participants name occurs more than one, first we query the unique participant `name` and their `sex`, after that we use `COUNT(*)`.
@@ -643,110 +647,119 @@ Output:
 
 ![Average Best Deadlift for Neutral Gender Powerlifter](plot_graph/avg_best_deadlift_Mx.png)
 
-## TEMPORARY ARCHIVED
-
-First, we will create table that contains all successful lift and replace failed lift with `NULL` value. Now, we will try to use temporary table called `successful_lift` instead of CTE method.
+## Descriptive statistics grouped by age within 5 year range <a name=desc_stat></a>
 
 ```sql
-CREATE TABLE success_lift (
-name VARCHAR,
-sex VARCHAR,
-date DATE,
-event VARCHAR,
-Squat1Kg NUMERIC,
-Squat2Kg NUMERIC,
-Squat3Kg NUMERIC,
-Squat4Kg NUMERIC,
-Best3SquatKg NUMERIC,
-Bench1Kg NUMERIC,
-Bench2Kg NUMERIC,
-Bench3Kg NUMERIC,
-Bench4Kg NUMERIC,
-Best3BenchKg NUMERIC,
-Deadlift1Kg NUMERIC,
-Deadlift2Kg NUMERIC,
-Deadlift3Kg NUMERIC,
-Deadlift4Kg NUMERIC,
-Best3DeadliftKg NUMERIC
+CREATE TABLE desc_stat (
+    sex VARCHAR,
+    age_range VARCHAR,
+    total_powerlifter INTEGER,
+    mean_bw NUMERIC,
+    median_bw NUMERIC,
+    mode_bw NUMERIC,
+    var_bw NUMERIC,
+    range_bw NUMERIC
 );
 
-INSERT INTO success_lift(
-name,
-sex,
-date,
-event,
-Squat1Kg,
-Squat2Kg,
-Squat3Kg,
-Squat4Kg,
-Best3SquatKg,
-Bench1Kg,
-Bench2Kg,
-Bench3Kg,
-Bench4Kg,
-Best3BenchKg,
-Deadlift1Kg,
-Deadlift2Kg,
-Deadlift3Kg,
-Deadlift4Kg,
-Best3DeadliftKg
+INSERT INTO desc_stat(
+    sex,
+    age_range,
+    total_powerlifter,
+    mean_bw,
+    median_bw,
+    mode_bw,
+    var_bw,
+    range_bw
 )
 SELECT
-name,
-sex,
-date,
-event,
-Squat1Kg,
-Squat2Kg,
-Squat3Kg,
-Squat4Kg,
-Best3SquatKg,
-Bench1Kg,
-Bench2Kg,
-Bench3Kg,
-Bench4Kg,
-Best3BenchKg,
-Deadlift1Kg,
-Deadlift2Kg,
-Deadlift3Kg,
-Deadlift4Kg,
-Best3DeadliftKg
-FROM powerlift_data;
+    sex,
+    CONCAT(MIN(age)::VARCHAR, '-', MAX(age)::VARCHAR) AS age_range,
+    COUNT(name) AS total_powerlifter,
+    ROUND(AVG(bodyweightkg), 2)AS mean_bw,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY bodyweightkg) AS median_bw,
+    MODE() WITHIN GROUP (ORDER BY bodyweightkg) AS mode_bw,
+    ROUND(VARIANCE(bodyweightkg), 2) AS var_bw,
+    MAX(bodyweightkg) - MIN(bodyweightkg) AS range_bw
+FROM powerlift_data
+WHERE age IS NOT NULL
+GROUP BY
+    sex,
+    FLOOR(age/5);
 ```
 Output:
-> INSERT successfully executed. 2855892 rows were affected.
+> INSERT successfully executed. 45 rows were affected.
 
-Next, we will replace the failed lift with `NULL` value.
+### Descriptive Statistics for Male <a name=desc_stat_male></a>
 ```sql
-UPDATE success_lift SET squat1kg = NULL WHERE squat1kg < 0;
-
-UPDATE success_lift SET squat2kg = NULL WHERE squat2kg < 0;
-
-UPDATE success_lift SET squat3kg = NULL WHERE squat3kg < 0;
-
-UPDATE success_lift SET squat4kg = NULL WHERE squat4kg < 0;
-
-UPDATE success_lift SET best3squatKg = NULL WHERE best3squatKg < 0;
-
-UPDATE success_lift SET bench1kg = NULL WHERE bench1kg < 0;
-
-UPDATE success_lift SET bench2kg = NULL WHERE bench2kg < 0;
-
-UPDATE success_lift SET bench3kg = NULL WHERE bench3kg < 0;
-
-UPDATE success_lift SET bench4kg = NULL WHERE bench4kg < 0;
-
-UPDATE success_lift SET best3benchkg = NULL WHERE best3benchkg < 0;
-
-UPDATE success_lift SET deadlift1kg = NULL WHERE deadlift1kg < 0;
-
-UPDATE success_lift SET deadlift2kg = NULL WHERE deadlift2kg < 0;
-
-UPDATE success_lift SET deadlift3Kg = NULL WHERE deadlift3kg < 0;
-
-UPDATE success_lift SET deadlift4kg = NULL WHERE deadlift4kg < 0;
-
-UPDATE success_lift SET Best3deadliftKg = NULL WHERE best3deadliftkg < 0;
+SELECT *
+FROM desc_stat_age
+WHERE sex = 'M';
 ```
 Output:
-> UPDATE successfully executed. xxx rows were affected.
+|sex|age_range|total_powerlifter|mean_bw|median_bw|mode_bw|var_bw|range_bw|
+|---|---------|-----------------|-------|---------|-------|------|--------|
+|M  |14-14    |19243            |70.22  |66       |67.5   |355.27|175.17  |
+|M  |15-19    |253578           |80.60  |78.2     |75     |359.87|202.35  |
+|M  |20-24    |277445           |88.10  |86.3     |90     |350.33|201.5   |
+|M  |25-29    |209055           |92.95  |89.95    |90     |391.34|252.2   |
+|M  |30-34    |156042           |96.21  |93.2     |90     |437.43|265.1   |
+|M  |35-39    |114549           |98.95  |97.7     |90     |459.37|203.66  |
+|M  |40-44    |103069           |99.09  |98       |100    |454.75|204.42  |
+|M  |45-49    |70144            |98.19  |97.3     |100    |434.63|204.96  |
+|M  |50-54    |55274            |96.30  |94.1     |100    |415.69|165.14  |
+|M  |55-59    |36016            |93.61  |90.3     |90     |381.57|181.3   |
+|M  |60-64    |26674            |91.36  |89.5     |82.5   |337.64|160.5   |
+|M  |65-69    |15731            |87.69  |85.68    |90     |298.84|225.1   |
+|M  |70-74    |10616            |85.66  |83.73    |82.5   |247.31|130.0   |
+|M  |75-79    |4592             |82.86  |81.19    |90     |236.96|158.38  |
+|M  |80-84    |1475             |80.45  |79       |100    |214.17|90.62   |
+|M  |85-89    |337              |79.75  |78.2     |82.5   |187.97|77.15   |
+|M  |90-94    |60               |82.20  |79.95    |82.5   |129.67|58.6    |
+|M  |95-97    |24               |76.80  |75       |75     |54.19 |35.5    |
+
+### Descriptive Statistics for Female <a name=desc_stat_female></a>
+```sql
+SELECT *
+FROM desc_stat_age
+WHERE sex = 'F';
+```
+Output:
+|sex|age_range|total_powerlifter|mean_bw|median_bw|mode_bw|var_bw|range_bw|
+|---|---------|-----------------|-------|---------|-------|------|--------|
+|F  |14-14    |9144             |61.80  |57.6     |52     |265.43|153.2   |
+|F  |15-19    |86570            |64.37  |60.42    |52     |269.53|154.1   |
+|F  |20-24    |87778            |65.00  |62.36    |60     |203.54|164.5   |
+|F  |25-29    |69921            |67.61  |64.9     |60     |262.91|174.5   |
+|F  |30-34    |54018            |69.24  |65.8     |60     |321.07|171.85  |
+|F  |35-39    |42118            |71.18  |67.1     |67.5   |349.66|183     |
+|F  |40-44    |36308            |71.53  |67.5     |67.5   |334.21|149.75  |
+|F  |45-49    |25152            |70.94  |67.5     |75     |307.33|193.85  |
+|F  |50-54    |18230            |70.62  |67.3     |67.5   |306.88|156.87  |
+|F  |55-59    |9893             |69.94  |67.2     |67.5   |269.93|125.0   |
+|F  |60-64    |6192             |69.35  |66.8     |67.5   |258.44|123.3   |
+|F  |65-69    |2947             |67.02  |64.4     |67.5   |207.74|95.69   |
+|F  |70-74    |1604             |66.18  |63.41    |90     |194.70|69.76   |
+|F  |75-79    |584              |65.22  |63.45    |67.5   |176.08|74.4    |
+|F  |80-84    |168              |63.01  |60       |67.5   |190.50|58.59   |
+|F  |85-89    |46               |60.42  |56.6     |55.9   |145.10|44.95   |
+|F  |90-94    |28               |69.46  |69.675   |82.5   |77.31 |34.6    |
+|F  |95-98    |7                |67.83  |67.13    |64.35  |27.95 |13.5    |
+
+### Descriptive Statistics for Neutral Gender <a name=desc_stat_neutral></a>
+```sql
+SELECT *
+FROM desc_stat_age
+WHERE sex = 'Mx';
+```
+Output:
+|sex|age_range|total_powerlifter|mean_bw|median_bw|mode_bw|var_bw|range_bw|
+|---|---------|-----------------|-------|---------|-------|------|--------|
+|Mx |16-17    |6                |71.50  |74.05    |61     |64.78 |19.8    |
+|Mx |21-24    |12               |81.64  |83.005   |51.9   |234.43|59.6    |
+|Mx |25-29    |9                |73.18  |73.92    |46.3   |192.99|52.4    |
+|Mx |30-33    |8                |91.43  |85.95    |76.9   |178.12|38.6    |
+|Mx |35-39    |4                |100.61 |100.15   |75.5   |581.38|51.15   |
+|Mx |43-43    |1                |79.70  |79.7     |79.7   |      |0.0     |
+|Mx |49-49    |1                |111.00 |111      |111    |      |0       |
+|Mx |53-54    |2                |85.70  |85.7     |83.6   |8.82  |4.2     |
+|Mx |55-58    |2                |88.60  |88.6     |86.1   |12.50 |5.0     |
