@@ -34,10 +34,11 @@
         1. [Top 10 male powerlifter with the most number 1 place](#first_male)
         2. [Top 10 female powerlifter with the most number 1 place](#first_female)
         3. [Top 10 neutral gender powerlifter with the most number 1 place](#first_neutral)
-8. [Percentage of disqualified powerlifter grouped by year within 5 year range](#disq_percent)
+    2. [Percentage of disqualified powerlifter grouped by year within 5 year range](#disq_percent)
+    3. [Top 5 country with the most number 1 place](#country_first)
 
 ## Percentage of powerlifter's gender <a name=gender_count></a>
-Because some participants name occurs more than one, first we query the unique participant `name` and their `sex`, after that we use `COUNT(*)`.
+Because some participants name occurs more than one, first we query the unique participant `name` and their `sex`, after that we use `COUNT(*)` grouped by `sex` column.
 ```sql
 WITH
 unique_participants AS (
@@ -71,7 +72,9 @@ Output:
 It's clearly that male gender dominated the powerlifting meet, while neutral gender is not very common in powerlifting meet.
 
 ## The number of powerlifter that join the meet within 5 year range (Separated by the gender)<a name=count_powerlifter></a>
-First, we will query it and export it into [query_csv](query_csv), then we will plot it by using [plot_data script](plot_data.py) and save it into [plot_graph](plot_graph).
+We will query the date when for each powerlifter join their first meet and grouped by 5 year range.
+
+*Note: Since the minimum year of the datasets is 1964 and the maximum year is 2023, both of them can't divided by 5, we will classify them as 1964-1964 and 2020-2023. This will applied in other case study that requiring year range/age range.*
 ```sql
 CREATE TABLE count_powerlifter(
     year_range VARCHAR,
@@ -177,6 +180,8 @@ Output:
 
 ![Number of Neutral](plot_graph/count_powerlifter_Mx.png)
 
+As we can see, the number of powerlifter is increased as the year increased. (We ignore the 1964-1964 and 2020-2023, since those year range is'nt in the 5 year range).
+
 ## Percentage of each event respectively to the total event <a name=count_event></a>
 ```sql
 WITH
@@ -208,7 +213,7 @@ Output:
 
 ## Percentage of successful lift in SBD (for each lift) <a name=success_lift></a>
 
-First, we create table called `success_lift` that contains lift name followed by lift percentage, then we will query each lift, one by one, and insert it into the table.
+First, we create table called `success_lift` that contains lift's name followed by lift percentage, then we will query each lift, one by one, and insert it into the table.
 
 ```sql
 CREATE TABLE lift_percentage (
@@ -360,7 +365,7 @@ Output:
 All successful lift decrease proportionally to the lift attempt.
 
 ## The average best lift for each 5 year (for each lift) <a name=avg_lift></a>
-We will query for each lift and export it into [query_csv](query_csv), then we will plot it by using [plot_data script](plot_data.py) and save it into [plot_graph](plot_graph).
+First, we will create table that contains average best ift for each lift, so there will be 3 tables. After that we will query them by filtering based on `sex` for each lift, so there will be 9 query.
 
 ### Average Best Squat <a name=avg_squat></a>
 ```sql
@@ -920,3 +925,24 @@ Output:
 |2015-2019 |66047           |5.78        |
 |2020-2023 |28982           |5.30        |
 
+### Top 5 country with the most number 1 place <a name='country_first'></a>
+```sql
+SELECT
+    country,
+    COUNT(*) AS total_first
+FROM powerlift_data
+WHERE
+    country IS NOT NULL
+GROUP BY
+    country
+ORDER BY total_first DESC
+LIMIT 5;
+```
+Output:
+|country|total_first|
+|-------|-----------|
+|USA    |736878     |
+|Russia |272123     |
+|Ukraine|83071      |
+|Canada |62009      |
+|England|50849      |
