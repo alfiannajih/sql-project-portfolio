@@ -36,6 +36,8 @@
         3. [Top 10 neutral gender powerlifter with the most number 1 place](#first_neutral)
     2. [Percentage of disqualified powerlifter grouped by year within 5 year range](#disq_percent)
     3. [Top 5 country with the most number 1 place](#country_first)
+8. [Equipment QUery](#equipment_query)
+    1. [Percentage of each equipment used by powerlifter](#equip_percent)
 
 ## Percentage of powerlifter's gender <a name=gender_count></a>
 Because some participants name occurs more than one, first we query the unique participant `name` and their `sex`, after that we use `COUNT(*)` grouped by `sex` column.
@@ -946,3 +948,33 @@ Output:
 |Ukraine|83071      |
 |Canada |62009      |
 |England|50849      |
+
+## Equipment Query <a name='equipment_query'></a>
+### Percentage of each equipment used by powerlifter <a name='equip_percent'></a>
+```sql
+WITH
+group_equip AS (
+    SELECT
+        equipment,
+        COUNT(*) AS count_equip
+    FROM powerlift_data
+    GROUP BY equipment
+)
+
+SELECT 
+    equipment,
+    count_equip,
+    ROUND(count_equip/(SELECT COUNT(*) FROM powerlift_data)::NUMERIC * 100, 2) AS percentage
+FROM group_equip
+ORDER BY percentage DESC;
+```
+Output:
+|equipment |count_equip|percentage|
+|----------|-----------|----------|
+|Single-ply|1318852    |46.1800   |
+|Raw       |1219842    |42.7132   |
+|Wraps     |187573     |6.5679    |
+|Multi-ply |121392     |4.2506    |
+|Unlimited |8185       |0.2866    |
+|Straps    |48         |0.0017    |
+

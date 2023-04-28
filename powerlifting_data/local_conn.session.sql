@@ -1,10 +1,15 @@
-SELECT
-    country,
-    COUNT(*) AS total_first
-FROM powerlift_data
-WHERE
-    country IS NOT NULL
-GROUP BY
-    country
-ORDER BY total_first DESC
-LIMIT 5;
+WITH
+group_equip AS (
+    SELECT
+        equipment,
+        COUNT(*) AS count_equip
+    FROM powerlift_data
+    GROUP BY equipment
+)
+
+SELECT 
+    equipment,
+    count_equip,
+    ROUND(count_equip/(SELECT COUNT(*) FROM powerlift_data)::NUMERIC * 100, 4) AS percentage
+FROM group_equip
+ORDER BY percentage DESC;
