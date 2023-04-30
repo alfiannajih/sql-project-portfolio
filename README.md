@@ -4,4 +4,4 @@ This is my SQL personal project, the motivation of this project is to gain some 
 ## Projects List
 |Project Name| Description|
 |---|---|
-|[Powerlifting Data](https://github.com/alfiannajih/sql-project-portfolio/blob/main/powerlifting_data/powerlift_query_docs.md)|This project contains the data of powerlifting competition|
+|[Powerlifting Data](/powerlifting_data/)|This project contains the data of powerlifting competition|
