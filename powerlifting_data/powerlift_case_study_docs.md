@@ -1,5 +1,5 @@
 # Case Study <a name=case_study></a>
-
+**Disclaimer: Most of the query are separated by gender because there is some gap between each gender (male, female, and neutral gender) in average lift number.**
 ## Table of Contents
 1. [Percentage of powerlifter's gender](#gender_count)
 2. [The number of powerlifter that join the meet within 5 year range (Separated by the gender)](#count_powerlifter)
@@ -38,6 +38,19 @@
     3. [Top 5 country with the most number 1 place](#country_first)
 8. [Equipment QUery](#equipment_query)
     1. [Percentage of each equipment used by powerlifter](#equip_percent)
+    2. [Top lift for each equipment](#top_lift_equip)
+        1. [Top lift for male powerlifter group by equipment](#top_lift_equip_male)
+            1. [Top squat](#top_squat_male)
+            2. [Top bench](#top_bench_male)
+            3. [Top deadlift](#top_deadlift_male)
+        2. [Top lift for female powerlifter group by equipment](#top_lift_equip_female)
+            1. [Top squat](#top_squat_female)
+            2. [Top bench](#top_bench_female)
+            3. [Top deadlift](#top_deadlift_female)
+        3. [Top lift for neutral gender powerlifter group by equipment](#top_lift_equip_neutral)
+            1. [Top squat](#top_squat_neutral)
+            2. [Top bench](#top_bench_neutral)
+            3. [Top deadlift](#top_deadlift_neutral)
 
 ## Percentage of powerlifter's gender <a name=gender_count></a>
 Because some participants name occurs more than one, first we query the unique participant `name` and their `sex`, after that we use `COUNT(*)` grouped by `sex` column.
@@ -978,3 +991,210 @@ Output:
 |Unlimited |8185       |0.2866    |
 |Straps    |48         |0.0017    |
 
+### Top lift for each equipment <a name='top_lift_equip'></a>
+```sql
+CREATE TABLE best_lift_equip (
+    equipment VARCHAR,
+    sex VARCHAR,
+    max_squat NUMERIC,
+    max_bench NUMERIC,
+    max_deadlift NUMERIC
+);
+
+INSERT INTO best_lift_equip (
+    equipment,
+    sex,
+    max_squat,
+    max_bench,
+    max_deadlift
+)
+SELECT
+    equipment,
+    sex,
+    MAX(best3squatkg) AS max_squat,
+    MAX(best3benchkg) AS max_bench,
+    MAX(best3deadliftkg) AS max_deadlift
+FROM powerlift_data
+GROUP BY
+    equipment,
+    sex
+```
+Output:
+> INSERT successfully executed. 14 rows were affected.
+
+#### Top lift for male powerlifter group by equipment <a name='top_lift_equip_male'></a>
+##### Top squat <a name='top_squat_male'></a>
+```sql
+SELECT
+    equipment,
+    max_squat
+FROM best_lift_equip
+WHERE sex = 'M'
+ORDER BY max_squat DESC;
+```
+Output
+|equipment |max_squat|
+|----------|---------|
+|Multi-ply |595      |
+|Wraps     |525      |
+|Single-ply|517.5    |
+|Unlimited |515      |
+|Raw       |490      |
+|Straps    |265      |
+
+##### Top bench <a name='top_bench_male'></a>
+```sql
+SELECT
+    equipment,
+    max_bench
+FROM best_lift_equip
+WHERE sex = 'M'
+ORDER BY max_bench DESC;
+```
+Output:
+|equipment |max_bench|
+|----------|---------|
+|Unlimited |612.5    |
+|Single-ply|508.02   |
+|Multi-ply |500      |
+|Raw       |355      |
+|Wraps     |306.17   |
+|Straps    |150      |
+
+##### Top deadlift <a name='top_deadlift_male'></a>
+```sql
+SELECT
+    equipment,
+    max_deadlift
+FROM best_lift_equip
+WHERE sex = 'M'
+ORDER BY max_deadlift DESC;
+```
+Output:
+|equipment |max_deadlift|
+|----------|------------|
+|Raw       |487.5       |
+|Multi-ply |457.5       |
+|Straps    |454.14      |
+|Wraps     |442.5       |
+|Single-ply|439.98      |
+|Unlimited |385.55      |
+
+Insight:
+* Top squat by male powerlifter achieved when equipment is multi-ply, which is 595 kg.
+* Top bench by male powerlifter achieved when equipment is unlimited, which is 612.5 kg.
+* Top deadlift by male powerlifter achieved when equipment is raw, which is 487.5 kg.
+
+#### Top lift for female powerlifter group by equipment <a name='top_lift_equip_female'></a>
+##### Top squat <a name='top_squat_female'></a>
+```sql
+SELECT
+    equipment,
+    max_squat
+FROM best_lift_equip
+WHERE sex = 'F'
+ORDER BY max_squat DESC NULLS LAST;
+```
+Output:
+|equipment |max_squat|
+|----------|---------|
+|Multi-ply |419.57   |
+|Single-ply|335      |
+|Wraps     |320      |
+|Unlimited |310.71   |
+|Raw       |280      |
+|Straps    |         |
+
+##### Top bench <a name='top_bench_female'></a>
+```sql
+SELECT
+    equipment,
+    max_bench
+FROM best_lift_equip
+WHERE sex = 'F'
+ORDER BY max_bench DESC NULLS LAST;
+```
+Output:
+|equipment |max_bench|
+|----------|---------|
+|Unlimited |294.84   |
+|Multi-ply |272.5    |
+|Single-ply|242.5    |
+|Raw       |207.5    |
+|Wraps     |200      |
+|Straps    |         |
+
+##### Top deadlift <a name='top_deadlift_female'></a>
+```sql
+SELECT
+    equipment,
+    max_deadlift
+FROM best_lift_equip
+WHERE sex = 'F'
+ORDER BY max_deadlift DESC;
+```
+Output:
+|equipment |max_deadlift|
+|----------|------------|
+|Multi-ply |315         |
+|Single-ply|295         |
+|Raw       |290         |
+|Wraps     |287         |
+|Unlimited |235.87      |
+|Straps    |187.5       |
+
+Insight:
+* Top squat by female powerlifter achieved when equipment is multi-ply, which is 419.57 kg.
+* Top bench by female powerlifter achieved when equipment is unlimited, which is 294.84 kg.
+* Top deadlift by female powerlifter achieved when equipment is multi-ply, which is 315 kg.
+
+#### Top lift for neutral gender powerlifter group by equipment <a name='top_lift_equip_neutral'></a>
+##### Top squat <a name='top_squat_neutral'></a>
+```sql
+SELECT
+    equipment,
+    max_squat
+FROM best_lift_equip
+WHERE sex = 'Mx'
+ORDER BY max_squat DESC;
+```
+Output:
+|equipment |max_squat|
+|----------|---------|
+|Wraps     |207.5    |
+|Raw       |175      |
+
+##### Top bench <a name='top_bench_neutral'></a>
+```sql
+SELECT
+    equipment,
+    max_bench
+FROM best_lift_equip
+WHERE sex = 'Mx'
+ORDER BY max_bench DESC;
+```
+Output:
+|equipment |max_bench|
+|----------|---------|
+|Wraps     |125      |
+|Raw       |110      |
+
+##### Top deadlift <a name='top_deadlift_neutral'></a>
+```sql
+SELECT
+    equipment,
+    max_deadlift
+FROM best_lift_equip
+WHERE sex = 'Mx'
+ORDER BY max_deadlift DESC;
+```
+Output:
+|equipment |max_deadlift|
+|----------|------------|
+|Wraps     |205         |
+|Raw       |200         |
+
+Insight:
+* Top squat by neutral gender powerlifter achieved when equipment is wraps, which is 207.5 kg.
+* Top bench by neutral gender powerlifter achieved when equipment is wraps, which is 125 kg.
+* Top deadlift by neutral gender powerlifter achieved when equipment is wraps, which is 205 kg.

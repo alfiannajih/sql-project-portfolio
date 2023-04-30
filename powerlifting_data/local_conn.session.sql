@@ -1,15 +1,29 @@
-WITH
-group_equip AS (
-    SELECT
-        equipment,
-        COUNT(*) AS count_equip
-    FROM powerlift_data
-    GROUP BY equipment
-)
-
-SELECT 
+/*
+SELECT
     equipment,
-    count_equip,
-    ROUND(count_equip/(SELECT COUNT(*) FROM powerlift_data)::NUMERIC * 100, 4) AS percentage
-FROM group_equip
-ORDER BY percentage DESC;
+    max_squat
+FROM best_lift_equip
+WHERE sex = 'M'
+ORDER BY max_squat DESC;
+
+SELECT
+    equipment,
+    max_bench
+FROM best_lift_equip
+WHERE sex = 'M'
+ORDER BY max_bench DESC;
+
+SELECT
+    equipment,
+    max_deadlift
+FROM best_lift_equip
+WHERE sex = 'M'
+ORDER BY max_deadlift DESC;
+*/
+
+SELECT
+    equipment,
+    max_deadlift
+FROM best_lift_equip
+WHERE sex = 'Mx'
+ORDER BY max_deadlift DESC;
