@@ -1,0 +1,24 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "server": "containers-us-west-18.railway.app",
+            "port": 7000,
+            "askForPassword": true,
+            "driver": "PostgreSQL",
+            "name": "railway_con",
+            "database": "railway",
+            "username": "postgres"
+        },
+        {
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "snp_500_conn",
+            "database": "snp_500",
+            "username": "user_portfolio",
+            "password": "thisisportfolio"
+        }
+    ]
+}
