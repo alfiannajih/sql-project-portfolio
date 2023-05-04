@@ -32,46 +32,295 @@ Output:
 |OGN    |-1.61                 |
 |VTRS   |-1.95                 |
 
+## Create yearly table
+Before we move into next query, we will create table that contains yearly prices only, because most likely we will use this table frequently.
+
+### Yearly stocks table
+```sql
+CREATE TABLE snp_500_yearly_stocks (
+    company VARCHAR,
+    security VARCHAR,
+    gics_sector VARCHAR,
+    gics_sub_industry VARCHAR,
+    founded VARCHAR,
+    open NUMERIC,
+    close NUMERIC,
+    year INTEGER
+);
+
+INSERT INTO snp_500_yearly_stocks(
+    company,
+    security,
+    gics_sector,
+    gics_sub_industry,
+    founded,
+    open,
+    close,
+    year
+)
+WITH
+opening_filter AS (
+    SELECT
+        company,
+        MIN(month) AS min_month,
+        year
+    FROM snp_500_prices
+    GROUP BY company, year
+),
+opening_year AS (
+    SELECT
+        snp_500_prices.*
+    FROM snp_500_prices
+    INNER JOIN opening_filter ON
+        snp_500_prices.company = opening_filter.company
+        AND
+        snp_500_prices.year = opening_filter.year
+        AND
+        snp_500_prices.month = opening_filter.min_month
+),
+closing_filter AS (
+    SELECT
+        company,
+        MAX(month) AS max_month,
+        year
+    FROM snp_500_prices
+    GROUP BY company, year
+),
+closing_year AS (
+    SELECT
+        snp_500_prices.*
+    FROM snp_500_prices
+    INNER JOIN closing_filter ON
+        snp_500_prices.company = closing_filter.company
+        AND
+        snp_500_prices.year = closing_filter.year
+        AND
+        snp_500_prices.month = closing_filter.max_month
+)
+SELECT
+    opening_year.company,
+    opening_year.security,
+    opening_year.gics_sector,
+    opening_year.gics_sub_industry,
+    opening_year.founded,
+    opening_year.open,
+    closing_year.close,
+    opening_year.year
+FROM opening_year
+INNER JOIN closing_year ON
+    opening_year.year = closing_year.year
+    AND
+    opening_year.company = closing_year.company;
+```
+Output:
+> INSERT successfully executed. 2985 rows were affected.
+
+### Yearly index table
+```sql
+CREATE TABLE snp_500_yearly_index (
+    company VARCHAR,
+    open NUMERIC,
+    close NUMERIC,
+    year INTEGER
+);
+
+INSERT INTO snp_500_yearly_index(
+    company,
+    open,
+    close,
+    year
+)
+WITH
+opening_filter AS (
+    SELECT
+        company,
+        MIN(month) AS min_month,
+        year
+    FROM snp_500_index
+    GROUP BY company, year
+),
+opening_year AS (
+    SELECT
+        snp_500_index.*
+    FROM snp_500_index
+    INNER JOIN opening_filter ON
+        snp_500_index.company = opening_filter.company
+        AND
+        snp_500_index.year = opening_filter.year
+        AND
+        snp_500_index.month = opening_filter.min_month
+),
+closing_filter AS (
+    SELECT
+        company,
+        MAX(month) AS max_month,
+        year
+    FROM snp_500_index
+    GROUP BY company, year
+),
+closing_year AS (
+    SELECT
+        snp_500_index.*
+    FROM snp_500_index
+    INNER JOIN closing_filter ON
+        snp_500_index.company = closing_filter.company
+        AND
+        snp_500_index.year = closing_filter.year
+        AND
+        snp_500_index.month = closing_filter.max_month
+)
+SELECT
+    opening_year.company,
+    opening_year.open,
+    closing_year.close,
+    opening_year.year
+FROM opening_year
+INNER JOIN closing_year ON
+    opening_year.year = closing_year.year
+    AND
+    opening_year.company = closing_year.company;
+```
+Output:
+> INSERT successfully executed. 6 rows were affected.
+
+### Yearly us treasure table
+```sql
+CREATE TABLE yearly_us_treasure (
+    company VARCHAR,
+    open NUMERIC,
+    close NUMERIC,
+    year INTEGER
+);
+
+INSERT INTO yearly_us_treasure(
+    company,
+    open,
+    close,
+    year
+)
+WITH
+opening_filter AS (
+    SELECT
+        company,
+        MIN(month) AS min_month,
+        year
+    FROM us_treasure
+    GROUP BY company, year
+),
+opening_year AS (
+    SELECT
+        us_treasure.*
+    FROM us_treasure
+    INNER JOIN opening_filter ON
+        us_treasure.company = opening_filter.company
+        AND
+        us_treasure.year = opening_filter.year
+        AND
+        us_treasure.month = opening_filter.min_month
+),
+closing_filter AS (
+    SELECT
+        company,
+        MAX(month) AS max_month,
+        year
+    FROM us_treasure
+    GROUP BY company, year
+),
+closing_year AS (
+    SELECT
+        us_treasure.*
+    FROM us_treasure
+    INNER JOIN closing_filter ON
+        us_treasure.company = closing_filter.company
+        AND
+        us_treasure.year = closing_filter.year
+        AND
+        us_treasure.month = closing_filter.max_month
+)
+SELECT
+    opening_year.company,
+    opening_year.open,
+    closing_year.close,
+    opening_year.year
+FROM opening_year
+INNER JOIN closing_year ON
+    opening_year.year = closing_year.year
+    AND
+    opening_year.company = closing_year.company;
+```
+Output:
+> INSERT successfully executed. 6 rows were affected.
+
+Next we will add new column called `yearly_return_percent` to each new table to avoid redundancy task in the next query.
+```sql
+ALTER TABLE snp_500_yearly_index
+ADD COLUMN yearly_return_percent NUMERIC;
+
+ALTER TABLE snp_500_yearly_stocks
+ADD COLUMN yearly_return_percent NUMERIC;
+
+ALTER TABLE yearly_us_treasure
+ADD COLUMN yearly_return_percent NUMERIC;
+
+UPDATE snp_500_yearly_index
+SET yearly_return_percent = (
+    SELECT (close-open)/open * 100
+);
+
+UPDATE snp_500_yearly_stocks
+SET yearly_return_percent = (
+    SELECT (close-open)/open * 100
+);
+
+UPDATE yearly_us_treasure
+SET yearly_return_percent = (
+    SELECT (close-open)/open * 100
+);
+```
+Output:
+> UPDATE successfully executed.
+
 ## Most profitable sectors each year
 ```sql
 WITH
-sector_monthly_return AS (
+sector_yearly_return AS (
     SELECT
         gics_sector,
         year,
-        ROUND(AVG((close - open)/open)*100, 2) AS monthly_return_percent
-    FROM snp_500_prices
+        AVG(yearly_return_percent) AS yearly_return_percent
+    FROM snp_500_yearly_stocks
     GROUP BY
         gics_sector,
         year
-    ORDER BY monthly_return_percent DESC
 ),
-max_return_year AS (
+max_yearly_return AS (
     SELECT
         year,
-        MAX(monthly_return_percent) AS max_return
-    FROM sector_monthly_return
+        MAX(yearly_return_percent) AS max_return_percent
+    FROM sector_yearly_return
     GROUP BY year
 )
 
 SELECT
-    sector_monthly_return.year,
-    sector_monthly_return.gics_sector,
-    sector_monthly_return.monthly_return_percent
-FROM sector_monthly_return
-INNER JOIN max_return_year
-ON sector_monthly_return.year = max_return_year.year AND sector_monthly_return.monthly_return_percent = max_return_year.max_return
-ORDER BY year;
+    sector_yearly_return.gics_sector,
+    sector_yearly_return.year,
+    ROUND(sector_yearly_return.yearly_return_percent, 2) AS yearly_return_percent
+FROM sector_yearly_return
+INNER JOIN max_yearly_return ON
+    sector_yearly_return.year = max_yearly_return.year
+    AND
+    sector_yearly_return.yearly_return_percent = max_yearly_return.max_return_percent
+ORDER BY year
 ```
 Output:
-|year|gics_sector|monthly_return_percent|
-|----|-----------|----------------------|
-|2018|Health Care|0.55                  |
-|2019|Information Technology|3.40                  |
-|2020|Information Technology|3.67                  |
-|2021|Real Estate|2.68                  |
-|2022|Energy     |3.99                  |
-|2023|Information Technology|4.49                  |
+|year|gics_sector           |yearly_return_percent|
+|----|----------------------|---------------------|
+|2018|Health Care           |6.82                 |
+|2019|Information Technology|60.60                |
+|2020|Information Technology|48.92                |
+|2021|Energy                |61.83                |
+|2022|Energy                |58.99                |
+|2023|Information Technology|14.29                |
 
 ## Sectors that have outperformed the S&P 500 index in each year
 ```sql
@@ -79,19 +328,18 @@ WITH
 index_yearly_return AS (
     SELECT
         year,
-        ROUND(AVG((close-open)/open)*100, 2) AS yearly_return_percent
-    FROM snp_500_index
-    GROUP BY year
+        ROUND((close-open)/open*100, 2) AS yearly_return_percent
+    FROM snp_500_yearly_index
 ),
 sector_yearly_return AS (
     SELECT
-        year,
         gics_sector,
-        ROUND(AVG((close-open)/open)*100, 2) AS yearly_return_percent
-    FROM snp_500_prices
-    GROUP BY
         year,
-        gics_sector
+        ROUND(AVG((close - open)/open) * 100, 2) AS yearly_return_percent
+    FROM snp_500_yearly_stocks
+    GROUP BY
+        gics_sector,
+        year
 )
 
 SELECT
@@ -109,220 +357,132 @@ ORDER BY
 Output:
 |year|gics_sector           |yearly_return_percent|
 |----|----------------------|---------------------|
-|2018|Communication Services|-0.45                |
-|2018|Real Estate           |-0.36                |
-|2018|Information Technology|0.22                 |
-|2018|Utilities             |0.32                 |
-|2018|Health Care           |0.55                 |
-|2019|Health Care           |2.18                 |
-|2019|Communication Services|2.24                 |
-|2019|Consumer Discretionary|2.26                 |
-|2019|Industrials           |2.47                 |
-|2019|Financials            |2.48                 |
-|2019|Information Technology|3.40                 |
-|2020|Industrials           |1.85                 |
-|2020|Materials             |1.94                 |
-|2020|Communication Services|2.14                 |
-|2020|Health Care           |2.24                 |
-|2020|Consumer Discretionary|3.21                 |
-|2020|Information Technology|3.67                 |
-|2021|Information Technology|1.91                 |
-|2021|Energy                |2.58                 |
-|2021|Real Estate           |2.68                 |
-|2022|Materials             |-0.90                |
-|2022|Financials            |-0.87                |
-|2022|Industrials           |-0.86                |
-|2022|Health Care           |-0.83                |
-|2022|Consumer Staples      |0.03                 |
-|2022|Utilities             |0.15                 |
-|2022|Energy                |3.99                 |
-|2023|Consumer Discretionary|2.98                 |
-|2023|Communication Services|3.76                 |
-|2023|Information Technology|4.49                 |
+|2018|Consumer Staples      |-5.27                |
+|2018|Consumer Discretionary|-4.58                |
+|2018|Real Estate           |-3.19                |
+|2018|Information Technology|3.72                 |
+|2018|Utilities             |6.11                 |
+|2018|Health Care           |6.82                 |
+|2019|Real Estate           |30.57                |
+|2019|Health Care           |32.00                |
+|2019|Communication Services|32.54                |
+|2019|Consumer Discretionary|33.17                |
+|2019|Industrials           |38.20                |
+|2019|Financials            |38.38                |
+|2019|Information Technology|60.60                |
+|2020|Industrials           |18.87                |
+|2020|Materials             |18.89                |
+|2020|Communication Services|20.79                |
+|2020|Health Care           |28.86                |
+|2020|Consumer Discretionary|32.23                |
+|2020|Information Technology|48.92                |
+|2021|Financials            |29.41                |
+|2021|Materials             |30.91                |
+|2021|Consumer Discretionary|31.57                |
+|2021|Information Technology|36.43                |
+|2021|Real Estate           |50.13                |
+|2021|Energy                |61.83                |
+|2022|Financials            |-9.55                |
+|2022|Materials             |-9.21                |
+|2022|Industrials           |-8.64                |
+|2022|Health Care           |-7.60                |
+|2022|Consumer Staples      |2.88                 |
+|2022|Utilities             |5.21                 |
+|2022|Energy                |58.99                |
+|2023|Consumer Discretionary|8.36                 |
+|2023|Communication Services|10.30                |
+|2023|Information Technology|14.29                |
 
 ## Yearly Sharpe ratio: [Return - Risk-Free Rate] / StDev([Return - Risk-Free Rate]). Where the Risk-Free rate is US Treasure 10Y rates
 ```sql
-WITH
-yearly_risk_free AS (
-    SELECT
-        year,
-        ROUND(AVG((close-open)/open), 3) AS risk_free_rate
-    FROM us_treasure
-    GROUP BY year
-),
-yearly_return_stock AS (
-    SELECT
-        year,
-        ROUND(AVG((close-open)/open), 3) AS yearly_return
-    FROM snp_500_prices
-    GROUP BY year
-)
-
 SELECT
-    yearly_return_stock.year,
-    ROUND((yearly_return_stock.yearly_return - yearly_risk_free.risk_free_rate) / (STDDEV(yearly_return_stock.yearly_return - yearly_risk_free.risk_free_rate) OVER()), 2) AS sharpe_ratio
-FROM yearly_return_stock
-INNER JOIN yearly_risk_free
-ON yearly_return_stock.year = yearly_risk_free.year
+    snp_500_yearly_index.year,
+    ROUND((snp_500_yearly_index.yearly_return_percent - yearly_us_treasure.yearly_return_percent) / (STDDEV(snp_500_yearly_index.yearly_return_percent - yearly_us_treasure.yearly_return_percent) OVER()), 2) AS sharpe_ratio
+FROM snp_500_yearly_index
+INNER JOIN yearly_us_treasure
+ON snp_500_yearly_index.year = yearly_us_treasure.year
 ORDER BY year;
 ```
 Output:
-|year|sharpe_ratio          |
-|----|----------------------|
-|2018|-0.15                 |
-|2019|0.79                  |
-|2020|1.00                  |
-|2021|-0.52                 |
-|2022|-1.70                 |
-|2023|0.44                  |
+|year|sharpe_ratio|
+|----|------------|
+|2018|-0.19       |
+|2019|0.66        |
+|2020|0.77        |
+|2021|-0.40       |
+|2022|-1.97       |
+|2023|0.16        |
 
 ## Sectors that have the best sharpe ratio in each year
 ```sql
 WITH
-yearly_risk_free AS (
-    SELECT
-        year,
-        ROUND(AVG((close-open)/open), 3) AS risk_free_rate
-    FROM us_treasure
-    GROUP BY year
-),
 sector_yearly_return AS (
     SELECT
-        year,
         gics_sector,
-        ROUND(AVG((close-open)/open), 3) AS yearly_return
-    FROM snp_500_prices
-    GROUP BY
         year,
+        AVG((close - open)/open) * 100 AS yearly_return_percent
+    FROM snp_500_yearly_stocks
+    GROUP BY
+        gics_sector,
+        year
+),
+sector_treasure_differ AS (
+    SELECT
+        gics_sector,
+        sector_yearly_return.year,
+        (sector_yearly_return.yearly_return_percent - yearly_us_treasure.yearly_return_percent) AS yearly_return_differ
+    FROM sector_yearly_return
+    INNER JOIN yearly_us_treasure ON
+        sector_yearly_return.year = yearly_us_treasure.year
+),
+std_dev_sector_treasure_differ AS (
+    SELECT
+        gics_sector,
+        STDDEV(yearly_return_differ) AS std_dev_yearly_return_differ
+    FROM sector_treasure_differ
+    GROUP BY
         gics_sector
 ),
 sector_sharpe_ratio AS (
     SELECT
-        sector_yearly_return.year,
-        gics_sector,
-        ROUND((sector_yearly_return.yearly_return - yearly_risk_free.risk_free_rate) / (STDDEV(sector_yearly_return.yearly_return - yearly_risk_free.risk_free_rate) OVER()), 2) AS sharpe_ratio
-    FROM sector_yearly_return
-    INNER JOIN yearly_risk_free
-    ON sector_yearly_return.year = yearly_risk_free.year
+        sector_treasure_differ.year,
+        sector_treasure_differ.gics_sector,
+        sector_treasure_differ.yearly_return_differ/std_dev_sector_treasure_differ.std_dev_yearly_return_differ AS sharpe_ratio
+    FROM sector_treasure_differ
+    INNER JOIN std_dev_sector_treasure_differ ON
+        sector_treasure_differ.gics_sector = std_dev_sector_treasure_differ.gics_sector
 ),
 best_sharpe_ratio AS (
     SELECT
         year,
-        MAX(sharpe_ratio) AS max_sharpe_ratio
+        MAX(sharpe_ratio) AS sharpe_ratio
     FROM sector_sharpe_ratio
     GROUP BY year
 )
 
 SELECT
-    sector_sharpe_ratio.*
+    sector_sharpe_ratio.year,
+    sector_sharpe_ratio.gics_sector,
+    ROUND(sector_sharpe_ratio.sharpe_ratio, 3) AS sharpe_ratio
 FROM sector_sharpe_ratio
 INNER JOIN best_sharpe_ratio ON
     sector_sharpe_ratio.year = best_sharpe_ratio.year
     AND
-    sector_sharpe_ratio.sharpe_ratio = best_sharpe_ratio.max_sharpe_ratio
+    sector_sharpe_ratio.sharpe_ratio = best_sharpe_ratio.sharpe_ratio
 ORDER BY year;
 ```
 Output:
-|year|gics_sector|sharpe_ratio|
-|----|-----------|------------|
-|2018|Health Care|0.02        |
-|2019|Information Technology|1.05        |
-|2020|Information Technology|1.40        |
-|2021|Real Estate|-0.35       |
-|2022|Energy     |-0.96       |
-|2023|Information Technology|1.07        |
+|year|gics_sector|sharpe_ratio                               |
+|----|-----------|-------------------------------------------|
+|2018|Health Care|-0.042                                     |
+|2019|Information Technology|0.882                                      |
+|2020|Information Technology|1.007                                      |
+|2021|Energy     |0.003                                      |
+|2022|Information Technology|-1.759                                     |
+|2023|Information Technology|0.213                                      |
 
 
-Insight: information technology is the sector with the best sharpe ratio at the most (3 times), which are in 2019, 2020, and 2023 (even though the year 2023 is not completed yet). In fact it has sharpe ratio greater than 1, which is considered as good.
-
-Let's analyze this sector further, first create table that contains only this sector in order to avoid redundancy.
-```sql
-CREATE TABLE it_stocks (LIKE snp_500_prices);
-
-INSERT INTO it_stocks (
-    sess_id,
-    company,
-    security,
-    gics_sector,
-    gics_sub_industry,
-    founded,
-    open,
-    high,
-    low,
-    close,
-    volume,
-    dividends,
-    stock_splits,
-    year,
-    month,
-    day
-)
-SELECT * FROM snp_500_prices WHERE gics_sector ='Information Technology';
-```
-Output:
-> INSERT successfully executed. 4154 rows were affected.
-
-## Top 5 company from information technology with highest total return from the 2018 till now (Jan-2018 - March-2023)
-```sql
-WITH
-open_year AS (
-    SELECT
-        company,
-        MIN(year) AS min_year,
-        MIN(month) AS min_month
-    FROM it_stocks
-    GROUP BY company
-),
-open_price_stocks AS (
-    SELECT
-        it_stocks.company,
-        open
-    FROM it_stocks
-    INNER JOIN open_year ON
-        it_stocks.year = open_year.min_year
-        AND
-        it_stocks.company = open_year.company
-        AND
-        it_stocks.month = open_year.min_month
-),
-close_year AS (
-    SELECT
-        company,
-        MAX(year) AS max_year,
-        3 AS max_month
-    FROM it_stocks
-    GROUP BY company
-),
-close_price_stocks AS (
-    SELECT
-        it_stocks.company,
-        close
-    FROM it_stocks
-    INNER JOIN close_year ON
-        it_stocks.year = close_year.max_year
-        AND
-        it_stocks.company = close_year.company
-        AND
-        it_stocks.month = close_year.max_month
-)
-
-SELECT
-    open_price_stocks.company,
-    ROUND((close-open)/open * 100, 2) AS total_return_percent
-FROM open_price_stocks
-INNER JOIN close_price_stocks ON
-    open_price_stocks.company = close_price_stocks.company
-ORDER BY total_return_percent DESC
-LIMIT 5;
-```
-Output:
-|company|total_return_percent|
-|-------|--------------------|
-|ENPH   |10400.00            |
-|AMD    |880.00              |
-|SEDG   |700.00              |
-|FTNT   |633.33              |
-|NVDA   |479.17              |
+Insight: information technology is the sector with the best sharpe ratio at the most (4 times), which are in 2019, 2020, 2022, and 2023 (even though the year 2023 is not completed yet).
 
 6) What might be the reasons for observed trends? What trends should we expect for 2023?
 7) What trading strategy would you choose regarding the S&P 500 stocks?
