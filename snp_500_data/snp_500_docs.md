@@ -1,4 +1,23 @@
-## Calculate monthly returns for each stock
+# Description
+This markdown file contains some case study that came from kaggle datasets along with the data itself. If you are interested, you can visit it, [here](https://www.kaggle.com/datasets/alexanderkuznetsovow/s-and-p-500-companies-price-dynamics). While the other case study is created by myself.
+
+Each case study is solved by writing a SQL statement and documented in this markdown file. In order to make it readable, I created the table of contents, so if you are interested in specific case, you can click on it. In the end of each case study, I provide the insights/conclusion of it by using bold text.
+
+# Case Study
+## Table of Contents
+- [Calculate monthly returns for each stock](#calc_month_return_stock)
+- [Calculate yearly table](#yearly_table)
+    - [Yearly Stock Table](#yearly_table_stock)
+    - [Yearly Index Table](#yearly_table_index)
+    - [Yearly us treasure table](#yearly_table_ust)
+    - [Yearly return percent column](#yearly_return_column)
+- [Most profitable sectors each year](#yearly_most_profit_sectors)
+- [Sectors that have outperformed the S&P 500 index in each year](#yearly_outperformed_sectors)
+- [Yearly S&P 500 index Sharpe Ratio](yearly_snp500_sharpe_ratio)
+- [Sectors that have the best sharpe ratio in each year](yearly_best_sharpe_ratio)
+
+
+## Calculate monthly returns for each stock <a name='calc_month_return_stock'></a>
 Because there are 500 stocks, it would be too much to list all of them, so we will list top 5 the highest and lowest return.
 ```sql
 (SELECT
@@ -32,10 +51,15 @@ Output:
 |OGN    |-1.61                 |
 |VTRS   |-1.95                 |
 
-## Create yearly table
+> Insights:
+> - I query `(close - open)/open * 100` and group it by `company` to find the average of the monthly return
+> - The highest monthly return is came from company `GEHC`, which is `11.41%`.
+> - While the lowest monthly return is came from company `VTRS`, which is `-1.95%`
+
+## Create yearly table <a name='yearly_table'></a>
 Before we move into next query, we will create table that contains yearly prices only, because most likely we will use this table frequently.
 
-### Yearly stocks table
+### Yearly stocks table <a name='yearly_table_stock'></a>
 ```sql
 CREATE TABLE snp_500_yearly_stocks (
     company VARCHAR,
@@ -115,7 +139,7 @@ INNER JOIN closing_year ON
 Output:
 > INSERT successfully executed. 2985 rows were affected.
 
-### Yearly index table
+### Yearly index table <a name='yearly_table_index'></a>
 ```sql
 CREATE TABLE snp_500_yearly_index (
     company VARCHAR,
@@ -183,7 +207,7 @@ INNER JOIN closing_year ON
 Output:
 > INSERT successfully executed. 6 rows were affected.
 
-### Yearly us treasure table
+### Yearly us treasure table <a name='yearly_table_ust'></a>
 ```sql
 CREATE TABLE yearly_us_treasure (
     company VARCHAR,
@@ -251,6 +275,7 @@ INNER JOIN closing_year ON
 Output:
 > INSERT successfully executed. 6 rows were affected.
 
+### Yearly return percent column <a name='yearly_return_column'></a>
 Next we will add new column called `yearly_return_percent` to each new table to avoid redundancy task in the next query.
 ```sql
 ALTER TABLE snp_500_yearly_index
@@ -280,7 +305,7 @@ SET yearly_return_percent = (
 Output:
 > UPDATE successfully executed.
 
-## Most profitable sectors each year
+## Most profitable sectors each year <a name='yearly_most_profit_sectors'></a>
 ```sql
 WITH
 sector_yearly_return AS (
@@ -322,8 +347,24 @@ Output:
 |2022|Energy                |58.99                |
 |2023|Information Technology|14.29                |
 
-## Sectors that have outperformed the S&P 500 index in each year
+> Insights:
+> - The lowest `yearly_return_percent` in the last 5 years is in 2018, which is `6.82%`.
+> - The highest `yearly_return_percent` in the last 5 years is in 2021, which is `61.83%`.
+> - `Information Technology` and `Energy` are the most sectors with highest `yearly_return_percentage`.
+
+## Sectors that have outperformed the S&P 500 index in each year <a name='yearly_outperformed_sectors'></a>
 ```sql
+CREATE TABLE outperformed_sectors (
+    year INTEGER,
+    gics_sector VARCHAR,
+    yearly_return_percent NUMERIC
+);
+
+INSERT INTO outperformed_sectors (
+    year,
+    gics_sector,
+    yearly_return_percent
+)
 WITH
 index_yearly_return AS (
     SELECT
@@ -341,7 +382,6 @@ sector_yearly_return AS (
         gics_sector,
         year
 )
-
 SELECT
     sector_yearly_return.year,
     sector_yearly_return.gics_sector,
@@ -353,6 +393,8 @@ WHERE sector_yearly_return.yearly_return_percent > index_yearly_return.yearly_re
 ORDER BY
     year,
     yearly_return_percent;
+
+SELECT * FROM outperformed_sectors;
 ```
 Output:
 |year|gics_sector           |yearly_return_percent|
@@ -393,7 +435,40 @@ Output:
 |2023|Communication Services|10.30                |
 |2023|Information Technology|14.29                |
 
-## Yearly Sharpe ratio: [Return - Risk-Free Rate] / StDev([Return - Risk-Free Rate]). Where the Risk-Free rate is US Treasure 10Y rates
+> Insights:
+> - Most of stocks that outperformed S&P 500 in year `2018` and `2022` are return negative percentage. So there are must be some events that make them collapse in those years.
+> - In the next section, we will find how frequent these sectors outperformed S&P 500.
+
+## How frequent the previous sectors outperformed S&P 500 index
+```sql
+SELECT
+    gics_sector,
+    COUNT(*) AS freq
+FROM outperformed_sectors
+GROUP BY gics_sector
+ORDER BY freq DESC;
+```
+Output:
+|gics_sector           |freq|
+|----------------------|----|
+|Information Technology|5   |
+|Consumer Discretionary|5   |
+|Health Care           |4   |
+|Communication Services|3   |
+|Financials            |3   |
+|Materials             |3   |
+|Industrials           |3   |
+|Real Estate           |3   |
+|Energy                |2   |
+|Consumer Staples      |2   |
+|Utilities             |2   |
+
+> Insights:
+> - `Information Technology` and `Consumer Discretionary` sectors are always outperformed S&P 500 in the last 5 years
+> - We will analyze those sectors later
+
+## Yearly Sharpe ratio: [Return - Risk-Free Rate] / StDev([Return - Risk-Free Rate]). Where the Risk-Free rate is US Treasure 10Y rates <a name='yearly_snp500_sharpe_ratio'></a>
+
 ```sql
 SELECT
     snp_500_yearly_index.year,
@@ -413,7 +488,7 @@ Output:
 |2022|-1.97       |
 |2023|0.16        |
 
-## Sectors that have the best sharpe ratio in each year
+## Sectors that have the best sharpe ratio in each year <a name='yearly_best_sharpe_ratio'></a>
 ```sql
 WITH
 sector_yearly_return AS (
